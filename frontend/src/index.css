@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply dark:bg-dark-200 dark:text-gray-100;
+    @apply bg-gray-50 text-gray-900;
+    @apply min-h-screen;
+  }
+  
+  h1 {
+    @apply text-3xl font-bold mb-4;
+  }
+  
+  h2 {
+    @apply text-2xl font-bold mb-3;
+  }
+  
+  h3 {
+    @apply text-xl font-bold mb-2;
+  }
+  
+  p {
+    @apply mb-4;
+  }
+  
+  a {
+    @apply text-primary-600 dark:text-primary-400 hover:underline;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700;
+    @apply dark:bg-primary-700 dark:hover:bg-primary-600;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+    @apply dark:bg-dark-100 dark:text-gray-200 dark:hover:bg-dark-border;
+  }
+  
+  .btn-outline {
+    @apply border border-gray-300 text-gray-700 hover:bg-gray-100;
+    @apply dark:border-dark-border dark:text-gray-200 dark:hover:bg-dark-100;
+  }
+  
+  .card {
+    @apply rounded-lg shadow-md p-6 bg-white;
+    @apply dark:bg-dark-100 dark:border dark:border-dark-border;
+  }
+  
+  .form-input {
+    @apply w-full px-4 py-2 rounded-md border border-gray-300;
+    @apply dark:bg-dark-100 dark:border-dark-border dark:text-gray-100;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500;
+  }
+  
+  .step-indicator-active {
+    @apply bg-primary-600 text-white;
+    @apply dark:bg-primary-500;
+  }
+  
+  .step-indicator-completed {
+    @apply bg-green-600 text-white;
+    @apply dark:bg-green-500;
+  }
+  
+  .step-indicator-waiting {
+    @apply bg-gray-300 text-gray-700;
+    @apply dark:bg-dark-border dark:text-gray-300;
+  }
+  
+  .step-connector {
+    @apply h-1 flex-grow mx-2 rounded-full bg-gray-300;
+    @apply dark:bg-dark-border;
+  }
+  
+  .step-connector-active {
+    @apply bg-primary-600;
+    @apply dark:bg-primary-500;
+  }
+  
+  .step-connector-completed {
+    @apply bg-green-600;
+    @apply dark:bg-green-500;
+  }
+  
+  /* Streaming text animation */
+  .typing-indicator::after {
+    content: '|';
+    animation: blink 1s step-end infinite;
+  }
+  
+  @keyframes blink {
+    from, to { opacity: 1; }
+    50% { opacity: 0; }
+  }
+}
