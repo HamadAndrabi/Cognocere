@@ -1,5 +1,6 @@
 from typing import Dict, List, Any
 import json
+import asyncio
 from collections import defaultdict
 
 from models.schemas import WebSearchResults, CuratedContext
@@ -40,17 +41,31 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
     sources = []
     source_index = 0  # For tracking sources
     
+    print(f"Starting content curation for {len(query_results)} queries")
+    
     for query, results in query_results.items():
+        # Log the curation process for frontend visibility
+        print(f"Curating content for query: {query}")
+        
         # Skip if no results
         if not results:
+            print(f"No results found for query: {query}")
             continue
         
         # Extract titles and snippets
         context_parts = []
         current_sources = []
         
+        print(f"Processing {len(results)} results for query: {query}")
+        
         for result in results:
             try:
+                # Log each source being processed (this is what gets displayed in the UI)
+                print(f"Processing source: {result.title}")
+                
+                # Pause briefly for better frontend visualization
+                await asyncio.sleep(0.5)
+                
                 # Safely handle content
                 content_to_use = ""
                 if hasattr(result, 'content') and result.content:
@@ -77,16 +92,21 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
                     "index": source_index
                 })
                 source_index += 1
+                
             except Exception as e:
                 print(f"Error processing result {result.url if hasattr(result, 'url') else 'unknown'}: {str(e)}")
                 # Skip this result if there's an error
         
         # Combine context parts
         if context_parts:
+            print(f"Generating summary for query: {query} with {len(context_parts)} sources")
             combined_context = "\n\n---\n\n".join(context_parts)
             
             # Create a summary for this query
             try:
+                # Log that we're summarizing
+                print(f"Summarizing information for query: {query}")
+                
                 summary_prompt = f"""
                 Summarize the following information retrieved for the query: "{query}"
                 
@@ -106,6 +126,13 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
                 # Add to summaries and sources
                 summaries.append(f"## Information for: {query}\n\n{summary}")
                 sources.extend(current_sources)
+                
+                # Log summary completion
+                print(f"Completed summary for query: {query}")
+                
+                # Pause briefly for better frontend visualization
+                await asyncio.sleep(0.8)
+                
             except Exception as e:
                 print(f"Error creating summary for query '{query}': {str(e)}")
                 # Add a placeholder if summary generation fails
@@ -115,13 +142,17 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
     # Check if we have any summaries
     if not summaries:
         # Create a default summary if no results were processed successfully
+        print("No summaries generated. Creating default summary.")
         summaries = ["## No valid search results\n\nThe search did not return any valid results that could be processed."]
     
     # Combine all summaries into a structured document
     content = "\n\n".join(summaries)
+    print(f"Generated combined content with {len(summaries)} sections")
     
     # Generate a structural analysis of the content
     try:
+        print("Generating content structure for final report")
+        
         structure_prompt = f"""
         Analyze the following research content and create a structural outline:
         
@@ -150,6 +181,9 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
             output_schema=structure_schema,
             system_message="You are a research content analyzer. Create a structured outline of the content."
         )
+        
+        print("Successfully generated content structure")
+        
     except Exception as e:
         print(f"Error generating structure: {str(e)}")
         # Create a default structure if structure generation fails

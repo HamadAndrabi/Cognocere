@@ -79,6 +79,7 @@
   .step-connector {
     @apply h-1 flex-grow mx-2 rounded-full bg-gray-300;
     @apply dark:bg-dark-border;
+    transition: width 0.5s ease-out;
   }
   
   .step-connector-active {
