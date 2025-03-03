@@ -295,6 +295,9 @@ async def stream_research_progress(session_id: str):
         session = research_sessions[session_id]
         last_status = None
         
+        # Track sent messages to avoid duplicates
+        sent_messages = set()
+        
         # Keep streaming until completed or error
         while session["status"] != "completed" and session["status"] != "error":
             if last_status != session["status"]:
@@ -310,16 +313,92 @@ async def stream_research_progress(session_id: str):
                 yield f"data: {json.dumps(event_data)}\n\n"
                 last_status = session["status"]
             
+            # Send detailed information based on current status
+            if session["status"] == "searching_web" or session["status"] == "searching_web_again":
+                # Send search query information
+                if "search_plan" in session and session["search_plan"]:
+                    search_plan = session["search_plan"]
+                    for query in search_plan.get("queries", []):
+                        # Create a unique message ID
+                        message_id = f"search:{query}"
+                        
+                        # Only send if not already sent
+                        if message_id not in sent_messages:
+                            detail_data = {
+                                "detail_type": "link",
+                                "detail": query
+                            }
+                            yield f"data: {json.dumps(detail_data)}\n\n"
+                            sent_messages.add(message_id)
+                            await asyncio.sleep(0.8)  # Stagger the updates
+            
+            elif session["status"] == "curating_context":
+                # Send curation information
+                if "search_results" in session and session["search_results"]:
+                    search_results = session["search_results"]
+                    
+                    # Send structured source information
+                    for i, result in enumerate(search_results.get("results", [])):
+                        # Create a unique message ID
+                        source_title = result.get("title", f"Source {i+1}")
+                        message_id = f"curation:{source_title}"
+                        
+                        # Only send if not already sent
+                        if message_id not in sent_messages:
+                            detail_data = {
+                                "detail_type": "curation",
+                                "detail": source_title
+                            }
+                            yield f"data: {json.dumps(detail_data)}\n\n"
+                            sent_messages.add(message_id)
+                            await asyncio.sleep(1.2)  # Longer pause for curation items
+            
+            elif session["status"] == "generating_report":
+                # Send report generation steps
+                report_steps = [
+                    "Analyzing research data...",
+                    "Organizing main findings...", 
+                    "Structuring report sections...",
+                    "Adding citations and references..."
+                ]
+                
+                for step in report_steps:
+                    # Create a unique message ID
+                    message_id = f"report:{step}"
+                    
+                    # Only send if not already sent
+                    if message_id not in sent_messages:
+                        detail_data = {
+                            "detail_type": "report",
+                            "detail": step
+                        }
+                        yield f"data: {json.dumps(detail_data)}\n\n"
+                        sent_messages.add(message_id)
+                        await asyncio.sleep(2.5)  # Longer pause between report steps
+            
             await asyncio.sleep(1)
             session = research_sessions[session_id]
         
         # Send final event based on status
         if session["status"] == "completed" and session["final_report"]:
+            # Send final report completion message
+            detail_data = {
+                "detail_type": "report",
+                "detail": "Finalizing research report..."
+            }
+            yield f"data: {json.dumps(detail_data)}\n\n"
+            
+            # Wait a moment before sending the completed status
+            await asyncio.sleep(1.5)
+            
+            # Send completed status with report
             yield f"data: {json.dumps({'status': 'completed', 'report': session['final_report']})}\n\n"
+            
         elif session["status"] == "error":
             yield f"data: {json.dumps({'status': 'error', 'error': session.get('error', 'An unknown error occurred')})}\n\n"
     
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 @app.get("/api/research/{session_id}/report/stream")
 async def stream_report_generation(session_id: str):
@@ -329,15 +408,39 @@ async def stream_report_generation(session_id: str):
     
     session = research_sessions[session_id]
     
-    if session["status"] != "generating_report":
-        raise HTTPException(status_code=400, detail="Report generation is not in progress")
+    # Make this endpoint more flexible - don't strictly require generating_report status
+    # Instead, check if we have sufficient context to generate a report
+    if "curated_context" not in session or not session["curated_context"]:
+        raise HTTPException(status_code=400, detail="Research data is not ready for report generation")
     
-    return StreamingResponse(
-        stream_llm_response(
-            prompt=f"Generate a detailed research report on {session['query']['topic']} based on the following context: {session['curated_context']['content']}"
-        ),
-        media_type="text/event-stream"
-    )
+    try:
+        print(f"Starting report streaming for session {session_id}")
+        
+        # Get the topic and context from the session
+        topic = session["query"]["topic"]
+        context = session["curated_context"]["content"]
+        
+        # Update session status to ensure it's in report generation mode
+        session["status"] = "generating_report"
+        session["step"] = "report_generation"
+        research_sessions[session_id] = session
+        
+        # Create a prompt for report generation
+        prompt = f"Generate a detailed research report on {topic} based on the following research context:\n\n{context}"
+        
+        print(f"Streaming report generation for topic: {topic}")
+        
+        # Return the streaming response
+        return StreamingResponse(
+            stream_llm_response(
+                prompt=prompt,
+                system_message="You are an expert research report writer. Create a comprehensive, well-structured report based on the provided research data. Include an introduction, main sections, and a conclusion."
+            ),
+            media_type="text/event-stream"
+        )
+    except Exception as e:
+        print(f"Error in report streaming: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

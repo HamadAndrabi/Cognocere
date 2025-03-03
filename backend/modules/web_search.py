@@ -17,12 +17,28 @@ async def perform_web_search(search_plan: SearchPlan) -> WebSearchResults:
     # Calculate results per query based on depth
     results_per_query = min(3 + search_plan.depth, 5)  # Base 3 + additional based on depth, max 5
     
-    # Perform searches for all queries
-    results_by_query = await search_and_fetch(
-        search_plan.queries,
-        num_results_per_query=results_per_query
-    )
+    # Log searches for visualization
+    for query in search_plan.queries:
+        print(f"Executing search query: {query}")
     
+    # Execute searches in a staggered approach to make UI more engaging
+    results_by_query = {}
+    for query in search_plan.queries:
+        print(f"Searching web for: {query}")
+        
+        # Execute the individual query 
+        query_results = await search_and_fetch(
+            [query],
+            num_results_per_query=results_per_query
+        )
+        
+        # Store the results
+        if query in query_results:
+            results_by_query[query] = query_results[query]
+        
+        # Brief pause for UI - this makes the steps more visible to users
+        await asyncio.sleep(0.5)
+        
     # Combine all results
     all_results = []
     query_mapping = {}  # Maps queries to result indices
@@ -32,6 +48,9 @@ async def perform_web_search(search_plan: SearchPlan) -> WebSearchResults:
         query_indices = []
         
         for result in query_results:
+            # Log each result for better visibility
+            print(f"Found result: {result['title']}")
+            
             # Check if this URL is already in all_results
             existing_indices = [
                 i for i, r in enumerate(all_results) 

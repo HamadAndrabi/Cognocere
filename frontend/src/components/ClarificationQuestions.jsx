@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaChevronRight, FaSpinner, FaArrowLeft } from 'react-icons/fa';
+import { FaChevronRight, FaSpinner, FaArrowLeft, FaQuestionCircle } from 'react-icons/fa';
 import { useResearch } from '../contexts/ResearchContext';
 import apiService from '../services/api';
 
@@ -89,68 +89,85 @@ const ClarificationQuestions = ({ onSubmit }) => {
   
   return (
     <motion.div
-      className="max-w-3xl mx-auto"
+      className="max-w-3xl mx-auto py-8"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
-      <motion.div variants={itemVariants} className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-          Clarify Your Research Topic
+      <motion.div variants={itemVariants} className="mb-8">
+        <h2 className="text-3xl font-bold text-primary-700 dark:text-primary-300 font-display mb-3">
+          Let's clarify your research needs
         </h2>
         <p className="text-gray-600 dark:text-gray-300">
           Please answer these questions to help us better understand what you're looking for about:
-          <span className="font-semibold ml-1">{researchTopic}</span>
+          <span className="font-semibold ml-1 text-primary-600 dark:text-primary-400">{researchTopic}</span>
         </p>
       </motion.div>
       
       <motion.form 
         variants={itemVariants}
         onSubmit={handleSubmit}
-        className="card"
+        className="card bg-white/50 dark:bg-dark-100/40 backdrop-blur-sm"
       >
         {clarificationQuestions.length === 0 ? (
           <div className="flex justify-center items-center py-10">
-            <FaSpinner className="animate-spin text-2xl text-gray-400" />
-            <span className="ml-3 text-gray-500">Loading questions...</span>
+            <FaSpinner className="animate-spin text-2xl text-primary-500" />
+            <span className="ml-3 text-gray-600 dark:text-gray-300">Loading questions...</span>
           </div>
         ) : (
           <>
-            <div className="space-y-6 mb-6">
+            <div className="space-y-8 mb-8">
               {clarificationQuestions.map((question, index) => (
-                <div key={question.id} className="border-b border-gray-100 dark:border-dark-border pb-5 last:border-b-0 last:pb-0">
-                  <label className="block mb-2 font-medium text-gray-700 dark:text-gray-200">
-                    {index + 1}. {question.question}
+                <motion.div 
+                  key={question.id} 
+                  className="border-b border-gray-100 dark:border-dark-border pb-6 last:border-b-0 last:pb-0"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <label className="flex items-start mb-2">
+                    <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-800/40 text-primary-600 dark:text-primary-400 flex items-center justify-center mr-3 flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="font-medium text-gray-800 dark:text-gray-200 text-lg pt-1">
+                      {question.question}
+                    </div>
                   </label>
-                  <textarea
-                    value={clarificationAnswers[question.id] || ''}
-                    onChange={(e) => updateClarificationAnswer(question.id, e.target.value)}
-                    placeholder="Your answer..."
-                    className="form-input h-24 resize-y"
-                    disabled={isSubmitting}
-                  />
-                  {validationErrors[question.id] && (
-                    <p className="mt-1 text-red-500 text-sm">{validationErrors[question.id]}</p>
-                  )}
-                </div>
+                  <div className="ml-11">
+                    <textarea
+                      value={clarificationAnswers[question.id] || ''}
+                      onChange={(e) => updateClarificationAnswer(question.id, e.target.value)}
+                      placeholder="Your answer..."
+                      className="form-input h-24 resize-y bg-white/80 dark:bg-dark-200/50 backdrop-blur-xs"
+                      disabled={isSubmitting}
+                    />
+                    {validationErrors[question.id] && (
+                      <p className="mt-1 text-accent-red text-sm">{validationErrors[question.id]}</p>
+                    )}
+                  </div>
+                </motion.div>
               ))}
             </div>
             
             <div className="flex justify-between items-center">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => setCurrentStep('input')}
                 className="btn btn-outline flex items-center"
                 disabled={isSubmitting}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
               >
                 <FaArrowLeft className="mr-2" />
                 Back
-              </button>
+              </motion.button>
               
-              <button
+              <motion.button
                 type="submit"
                 className="btn btn-primary flex items-center"
                 disabled={isSubmitting}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
               >
                 {isSubmitting ? (
                   <>
@@ -163,14 +180,20 @@ const ClarificationQuestions = ({ onSubmit }) => {
                     <FaChevronRight className="ml-2" />
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </>
         )}
       </motion.form>
       
-      <motion.div variants={itemVariants} className="mt-6 text-sm text-gray-500 dark:text-gray-400 text-center">
-        <p>Your answers will help tailor the research to your specific needs.</p>
+      <motion.div variants={itemVariants} className="mt-6 text-center">
+        <div className="flex items-center justify-center text-primary-500 dark:text-primary-400 mb-2">
+          <FaQuestionCircle className="mr-2" />
+          <span className="font-medium">Why do we ask these questions?</span>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Your answers help us tailor the research to your specific needs and ensure we deliver the most relevant information.
+        </p>
       </motion.div>
     </motion.div>
   );

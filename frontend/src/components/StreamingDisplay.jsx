@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaSpinner, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaSpinner, FaCheckCircle, FaExclamationTriangle, FaArrowRight, FaRedo } from 'react-icons/fa';
 import { useResearch } from '../contexts/ResearchContext';
 import apiService from '../services/api';
+import VerticalResearchTimeline from './VerticalResearchTimeline';
+import ResearchProgress from './ResearchProgress';
 
 const statusMessages = {
   generating_plan: 'Generating a research plan...',
@@ -37,12 +39,40 @@ const StreamingDisplay = ({ onComplete }) => {
   
   const [status, setStatus] = useState('generating_plan');
   const [eventSource, setEventSource] = useState(null);
+  const [reportEventSource, setReportEventSource] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
   const [progress, setProgress] = useState(0);
   const [hasError, setHasError] = useState(false);
   const [lastErrorMessage, setLastErrorMessage] = useState('');
+  const [showRawOutput, setShowRawOutput] = useState(false);
+  
+  // Store structured progress updates
+  const [progressUpdates, setProgressUpdates] = useState([]);
   
   const contentRef = useRef(null);
+  
+  // Helper function to add a progress update with timestamp
+  const addProgressUpdate = (type, content) => {
+    console.log(`Adding progress update: type=${type}, content=${content.substring(0, 50)}...`);
+    
+    const now = new Date();
+    
+    // Check for duplicates within the same type
+    const isDuplicate = progressUpdates.some(update => 
+      update.type === type && update.content === content
+    );
+    
+    if (!isDuplicate) {
+      setProgressUpdates(prev => [
+        ...prev,
+        {
+          type,
+          content,
+          timestamp: now.toISOString()
+        }
+      ]);
+    }
+  };
   
   // Scroll to bottom when content updates
   useEffect(() => {
@@ -51,9 +81,11 @@ const StreamingDisplay = ({ onComplete }) => {
     }
   }, [streamingContent]);
   
-  // Setup event source for streaming
+  // Setup event source for main research progress streaming
   useEffect(() => {
     if (!sessionId) return;
+    
+    console.log(`Setting up main event stream for session ${sessionId}`);
     
     const source = apiService.streamResearchProgress(sessionId);
     setEventSource(source);
@@ -61,11 +93,28 @@ const StreamingDisplay = ({ onComplete }) => {
     source.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("Received event data:", data);
         
         // Update processing status
         if (data.status) {
           setStatus(data.status);
           setProcessingStatus(data.status);
+          
+          // Update current step based on status
+          const statusToStep = {
+            'generating_plan': 'plan',
+            'searching_web': 'search',
+            'searching_web_again': 'search',
+            'curating_context': 'curate',
+            'evaluating_context': 'evaluate',
+            'generating_report': 'report',
+            'completed': 'report',
+            'error': 'error'
+          };
+          
+          if (statusToStep[data.status]) {
+            setCurrentStep(statusToStep[data.status]);
+          }
           
           // Update progress based on status
           const statusKeys = Object.keys(statusMessages);
@@ -75,9 +124,34 @@ const StreamingDisplay = ({ onComplete }) => {
             setProgress(progressPercent);
           }
           
-          // Add status update to streaming content
+          // Add status update to streaming content and progress updates
           if (statusMessages[data.status] && data.status !== 'error') {
-            appendToStreamingContent(`\n\n--- ${statusMessages[data.status]} ---\n\n`);
+            const statusMessage = statusMessages[data.status];
+            appendToStreamingContent(`\n\n--- ${statusMessage} ---\n\n`);
+            addProgressUpdate('status', statusMessage);
+          }
+          
+          // Start report streaming if status is generating_report
+          if (data.status === 'generating_report' && !reportEventSource) {
+            startReportStreaming();
+          }
+        }
+        
+        // Handle backend details (links, processing steps, etc.)
+        if (data.detail) {
+          const detail = data.detail;
+          const detailType = data.detail_type || 'info';
+          
+          // Add to progress updates
+          addProgressUpdate(detailType, detail);
+          
+          // Add to streaming content for raw output
+          if (detailType === 'link') {
+            appendToStreamingContent(`\nSearching: ${detail}\n`);
+          } else if (detailType === 'curation') {
+            appendToStreamingContent(`\nCurating content from: ${detail}\n`);
+          } else {
+            appendToStreamingContent(`\n${detail}\n`);
           }
         }
         
@@ -89,13 +163,20 @@ const StreamingDisplay = ({ onComplete }) => {
             appendToStreamingContent(`\n\n⚠️ ERROR: ${data.error}\n\n`);
             setError(data.error);
             setHasError(true);
+            
+            // Add to progress updates
+            addProgressUpdate('error', data.error);
           }
         }
         
         // If report is completed
         if (data.status === 'completed' && data.report) {
+          console.log("Report completed, setting final report");
           setFinalReport(data.report);
           setIsFinished(true);
+          
+          // Add completion message
+          addProgressUpdate('report', 'Research report completed successfully');
         }
       } catch (error) {
         console.error('Error parsing event data:', error);
@@ -114,38 +195,68 @@ const StreamingDisplay = ({ onComplete }) => {
     
     // Clean up event source on unmount
     return () => {
+      console.log("Cleaning up main event source");
       source.close();
     };
-  }, [sessionId, appendToStreamingContent, setError, setProcessingStatus, setFinalReport, lastErrorMessage, hasError]);
+  }, [sessionId]);
   
-  // Additional event source for report streaming
-  useEffect(() => {
-    if (!sessionId || status !== 'generating_report') return;
+  // Function to start report streaming
+  const startReportStreaming = () => {
+    if (!sessionId || reportEventSource) return;
     
-    // Create a separate event source for report streaming
-    const reportSource = apiService.streamReportGeneration(sessionId);
-    
-    reportSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.text) {
-          appendToStreamingContent(data.text);
+    try {
+      console.log(`Setting up report event stream for session ${sessionId}`);
+      
+      const reportSource = apiService.streamReportGeneration(sessionId);
+      setReportEventSource(reportSource);
+      
+      reportSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.text) {
+            console.log(`Received report text: ${data.text.substring(0, 20)}...`);
+            appendToStreamingContent(data.text);
+            
+            // Add to progress updates (chunk into smaller pieces for better display)
+            if (data.text.length > 20) {
+              addProgressUpdate('report', `Generating content: ${data.text.substring(0, 100)}...`);
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing report stream data:', error);
         }
-      } catch (error) {
-        console.error('Error parsing report stream data:', error);
+      };
+      
+      reportSource.onerror = (error) => {
+        console.error('Report stream error:', error);
+        // Don't set error here as we still have the main event source
+        
+        // Try to recreate the report stream with a delay if we're still in report generation
+        if (status === 'generating_report') {
+          console.log("Report stream error, attempting to reconnect in 3 seconds");
+          setTimeout(() => {
+            if (reportEventSource) {
+              reportEventSource.close();
+              setReportEventSource(null);
+              startReportStreaming();
+            }
+          }, 3000);
+        }
+      };
+    } catch (error) {
+      console.error("Error starting report stream:", error);
+    }
+  };
+  
+  // Clean up report event source on unmount or status change
+  useEffect(() => {
+    return () => {
+      if (reportEventSource) {
+        console.log("Cleaning up report event source");
+        reportEventSource.close();
       }
     };
-    
-    reportSource.onerror = (error) => {
-      console.error('Report stream error:', error);
-      // Don't set error here as we still have the main event source
-    };
-    
-    // Clean up on unmount or status change
-    return () => {
-      reportSource.close();
-    };
-  }, [sessionId, status, appendToStreamingContent]);
+  }, []);
   
   // Move to report stage when finished
   useEffect(() => {
@@ -162,14 +273,21 @@ const StreamingDisplay = ({ onComplete }) => {
     setLastErrorMessage('');
     setError(null);
     
-    // Close existing event source if any
+    // Close existing event sources if any
     if (eventSource) {
       eventSource.close();
+      setEventSource(null);
+    }
+    
+    if (reportEventSource) {
+      reportEventSource.close();
+      setReportEventSource(null);
     }
     
     // Reset content and status
     setStreamingContent('');
     setStatus('generating_plan');
+    setProgressUpdates([]);
     
     // Restart the research process
     resetResearch();
@@ -193,63 +311,98 @@ const StreamingDisplay = ({ onComplete }) => {
   
   return (
     <motion.div
-      className="max-w-4xl mx-auto"
+      className="max-w-6xl mx-auto"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+        <h2 className="text-2xl font-bold text-primary-700 dark:text-primary-300 flex items-center">
           {getStatusIcon(status)}
           <span className="ml-3">Researching: {researchTopic}</span>
         </h2>
         
         <div className="mt-4">
-          <div className="w-full bg-gray-200 dark:bg-dark-300 rounded-full h-2.5">
+          <div className="progress-bar">
             <div 
-              className="bg-primary-600 h-2.5 rounded-full transition-all duration-500"
+              className="progress-bar-fill"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
             {statusMessages[status] || 'Processing...'}
           </p>
         </div>
       </div>
       
-      <div className="card mb-6">
-        <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200">
-          Research Progress
-        </h3>
-        
-        <div 
-          ref={contentRef}
-          className="bg-gray-50 dark:bg-dark-200 border border-gray-200 dark:border-dark-border rounded-md p-4 h-96 overflow-y-auto font-mono text-sm whitespace-pre-wrap"
-        >
-          {streamingContent || (
-            <div className="text-gray-400 dark:text-gray-500 h-full flex items-center justify-center">
-              Waiting for research to begin...
-            </div>
-          )}
-          <span className="typing-indicator"></span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column: Research Timeline */}
+        <div className="col-span-1 card">
+          <h3 className="text-lg font-semibold mb-3 text-primary-700 dark:text-primary-300 flex items-center">
+            <FaArrowRight className="mr-2 text-primary-500" />
+            Research Flow
+          </h3>
+          
+          <VerticalResearchTimeline />
         </div>
         
-        {hasError && (
-          <div className="mt-4">
-            <button
-              onClick={handleRetry}
-              className="btn btn-primary flex items-center mx-auto"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              Start Over
-            </button>
+        {/* Right column: Research Content & Progress */}
+        <div className="col-span-1 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-6">
+            {/* Research Progress with improved structure */}
+            <div className="card overflow-hidden">
+              <ResearchProgress 
+                progressUpdates={progressUpdates} 
+                maxHeight="400px"
+              />
+            </div>
+            
+            {/* Raw Output (toggle) */}
+            <div className="card">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold text-primary-700 dark:text-primary-300">
+                  Raw Output
+                </h3>
+                
+                <button 
+                  onClick={() => setShowRawOutput(!showRawOutput)}
+                  className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
+                  {showRawOutput ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              
+              {showRawOutput && (
+                <div 
+                  ref={contentRef}
+                  className="terminal h-60 overflow-y-auto"
+                >
+                  {streamingContent || (
+                    <div className="text-gray-400 dark:text-gray-500 h-full flex items-center justify-center">
+                      Waiting for research to begin...
+                    </div>
+                  )}
+                  <span className="typing-indicator"></span>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+          
+          {hasError && (
+            <div className="mt-4">
+              <button
+                onClick={handleRetry}
+                className="btn btn-primary flex items-center mx-auto"
+              >
+                <FaRedo className="mr-2" />
+                Start Over
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       
-      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+      <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
         <p>Your comprehensive research report is being generated. This may take several minutes depending on the complexity of the topic.</p>
       </div>
     </motion.div>

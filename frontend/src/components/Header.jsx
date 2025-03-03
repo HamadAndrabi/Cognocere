@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaMoon, FaSun} from 'react-icons/fa';
-import { GiIronHulledWarship } from "react-icons/gi";
-
+import { FaMoon, FaSun } from 'react-icons/fa';
+import { GiIronHulledWarship } from 'react-icons/gi';
 
 const Header = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -35,11 +34,13 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white dark:bg-dark-100 shadow-md py-4 px-6 border-b border-gray-200 dark:border-dark-border">
+    <header className="bg-white dark:bg-primary-900 shadow-nav py-4 px-6 border-b border-primary-100/30 dark:border-primary-700/30">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <GiIronHulledWarship className="text-primary-600 dark:text-primary-400 text-2xl" />
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white m-0">
+          <div className="text-primary-500 dark:text-primary-300 text-3xl bg-primary-50 dark:bg-primary-800 p-2 rounded-lg">
+            <GiIronHulledWarship />
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-primary-300 dark:from-primary-300 dark:to-primary-100 m-0">
             Cognocere
           </h1>
         </div>
@@ -47,7 +48,7 @@ const Header = () => {
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleDarkMode}
-            className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-200 transition-colors"
+            className="p-2 rounded-full bg-primary-50 dark:bg-primary-800 text-primary-500 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-700 transition-colors"
             aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
             {darkMode ? <FaSun className="text-xl" /> : <FaMoon className="text-xl" />}
