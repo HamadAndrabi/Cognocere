@@ -87,7 +87,7 @@ const InputForm = ({ onSubmit }) => {
           Deep Research Assistant
         </h2>
         <p className="text-lg text-gray-600 dark:text-gray-300">
-          Enter a research topic and our AI will conduct a thorough investigation for you.
+         Curiosity starts here.
         </p>
       </motion.div>
       

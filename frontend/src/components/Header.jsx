@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FaMoon, FaSun, FaSearch, FaRobot } from 'react-icons/fa';
+import { FaMoon, FaSun} from 'react-icons/fa';
+import { GiIronHulledWarship } from "react-icons/gi";
+
 
 const Header = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -36,9 +38,9 @@ const Header = () => {
     <header className="bg-white dark:bg-dark-100 shadow-md py-4 px-6 border-b border-gray-200 dark:border-dark-border">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <FaRobot className="text-primary-600 dark:text-primary-400 text-2xl" />
+          <GiIronHulledWarship className="text-primary-600 dark:text-primary-400 text-2xl" />
           <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white m-0">
-            LLM-Powered Deep Researcher
+            Cognocere
           </h1>
         </div>
         
