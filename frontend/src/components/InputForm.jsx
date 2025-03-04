@@ -103,9 +103,9 @@ const InputForm = ({ onSubmit }) => {
               <GiIronHulledWarship />
             </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500 dark:from-primary-300 dark:to-primary-100">
+          <t1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500 dark:from-primary-300 dark:to-primary-100">
             Cognocere
-          </h1>
+          </t1>
           <p className="text-xl text-primary-600 dark:text-primary-300 max-w-2xl mx-auto">
             Explore any topic with AI-powered deep research
           </p>
