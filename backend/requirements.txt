@@ -7,3 +7,9 @@ httpx==0.25.1
 aiohttp==3.8.6
 sse-starlette==1.6.5
 starlette==0.27.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+google-auth-oauthlib==1.0.0
+google-auth==2.23.0
+itsdangerous==2.1.2

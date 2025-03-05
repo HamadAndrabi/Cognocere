@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
@@ -15,6 +15,8 @@ from models.schemas import (
     EvaluationResult,
     FinalReport
 )
+from models.auth_schemas import UserDB
+
 from modules.clarification import generate_clarification_questions
 from modules.plan_generation import generate_search_plan
 from modules.web_search import perform_web_search
@@ -23,6 +25,10 @@ from modules.evaluation import evaluate_context
 from modules.report_generation import generate_report
 from services.llm_service import stream_llm_response
 from config import Settings
+
+# Import authentication dependencies
+from fastapi.security import OAuth2PasswordBearer
+from services.auth_service import get_current_user
 
 # Load settings
 settings = Settings()
@@ -37,14 +43,71 @@ app = FastAPI(
 # Configure CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_origins=settings.allow_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=settings.allow_methods,
+    allow_headers=settings.allow_headers,
 )
 
-    # Store active research sessions
+# Authentication setup
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Authentication routes
+@app.get("/api/auth/google/url")
+async def get_google_auth_url():
+    """Generate the Google OAuth URL for frontend redirection"""
+    auth_url = f"https://accounts.google.com/o/oauth2/auth" \
+               f"?client_id={settings.google_client_id}" \
+               f"&redirect_uri={settings.google_redirect_uri}" \
+               f"&response_type=code" \
+               f"&scope=email%20profile" \
+               f"&access_type=offline"
+    
+    return {"auth_url": auth_url}
+
+@app.post("/api/auth/google/callback")
+async def google_callback(code: str, redirect_uri: str):
+    """Handle Google OAuth callback with authorization code"""
+    try:
+        # For now, just return a success response
+        # In a real implementation, we would exchange the code for tokens
+        return {
+            "access_token": "dummy_token",
+            "token_type": "bearer",
+            "user": {
+                "id": "123",
+                "email": "user@example.com",
+                "name": "Test User",
+                "is_active": True
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Authentication error: {str(e)}"
+        )
+
+@app.get("/api/auth/me")
+async def get_current_user_info(token: str = Depends(oauth2_scheme)):
+    """Get current user information"""
+    # Dummy implementation
+    return {
+        "id": "123",
+        "email": "user@example.com",
+        "name": "Test User",
+        "is_active": True
+    }
+
+@app.post("/api/auth/logout")
+async def logout():
+    """Log out the current user"""
+    return {"message": "Successfully logged out"}
+
+# Store active research sessions
 research_sessions = {}
+
+# Map user IDs to their research sessions
+user_sessions = {}
 
 @app.post("/api/research/start")
 async def start_research(query: ResearchQuery):
@@ -62,10 +125,13 @@ async def start_research(query: ResearchQuery):
         "curated_context": None,
         "evaluation_result": None,
         "final_report": None,
-        "iterations": 0  # Track the number of research iterations
+        "iterations": 0,  # Track the number of research iterations
+        "user_id": None  # No user authentication yet
     }
     
     return {"session_id": session_id, "status": "clarification_needed"}
+
+# Continue with the rest of your API endpoints...
 
 @app.get("/api/research/{session_id}/clarification")
 async def get_clarification_questions(session_id: str):
@@ -153,7 +219,7 @@ async def process_web_search(session_id: str, search_plan: SearchPlan):
         # Update session
         session["search_results"] = search_results.dict()
         session["status"] = "curating_context"
-        session["step"] = "context_curation"
+        session["step"] = "web_search"
         research_sessions[session_id] = session
         
         # Continue with context curation
@@ -399,7 +465,6 @@ async def stream_research_progress(session_id: str):
     
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-
 @app.get("/api/research/{session_id}/report/stream")
 async def stream_report_generation(session_id: str):
     """Stream the report generation process in real-time"""
@@ -441,6 +506,27 @@ async def stream_report_generation(session_id: str):
     except Exception as e:
         print(f"Error in report streaming: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
+
+# Reports endpoint
+@app.get("/api/user/reports")
+async def get_user_reports():
+    """Get all research reports (dummy implementation)"""
+    return {
+        "reports": [
+            {
+                "session_id": "1",
+                "topic": "Quantum computing applications",
+                "created_at": "2023-07-01T10:30:00Z",
+                "title": "The Future of Quantum Computing: Applications and Implications"
+            },
+            {
+                "session_id": "2",
+                "topic": "Climate change mitigation strategies",
+                "created_at": "2023-06-28T14:15:00Z",
+                "title": "Climate Change Mitigation: Current Strategies and Future Directions"
+            }
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn
