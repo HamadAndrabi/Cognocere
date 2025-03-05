@@ -66,33 +66,16 @@ async def fetch_content(url: str) -> str:
         The content of the webpage
     """
     try:
-        # Skip PDF, image and other binary files based on URL extension
-        if any(ext in url.lower() for ext in ['.pdf', '.docx', '.xlsx', '.pptx', '.png', '.jpg', '.jpeg', '.gif']):
-            return f"[This is a document/binary file: {url}]"
-            
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=10) as response:
                 if response.status != 200:
                     return ""
-                
-                # Check content type to avoid binary files
-                content_type = response.headers.get('Content-Type', '').lower()
-                if 'text/html' not in content_type and 'text/plain' not in content_type:
-                    return f"[Content type not supported: {content_type}]"
-                
-                try:
-                    content = await response.text()
-                    return content
-                except UnicodeDecodeError:
-                    # Try with different encoding or return a placeholder
-                    try:
-                        raw_content = await response.read()
-                        return raw_content.decode('latin-1')
-                    except:
-                        return f"[Content encoding not supported: {url}]"
+                    
+                content = await response.text()
+                return content
     except Exception as e:
         print(f"Error fetching content from {url}: {str(e)}")
-        return f"[Error fetching content: {url}]"
+        return ""
 
 async def search_and_fetch(queries: List[str], num_results_per_query: int = 5) -> Dict[str, List[Dict[str, Any]]]:
     """

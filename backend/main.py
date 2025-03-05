@@ -218,18 +218,18 @@ async def process_plan_generation(session_id: str, query: str, clarification_ans
         # Continue with web search automatically
         await process_web_search(session_id, search_plan)
     except AttributeError as e:
-        # Handle missing configuration
         error_msg = "Missing required configuration. Please check your .env file and Settings class."
         session["status"] = "error"
         session["error"] = error_msg
         research_sessions[session_id] = session
         print(f"Configuration error: {error_msg}")
     except Exception as e:
-        # Handle other errors
+        # Capture and log the underlying error from the Serper API
+        error_msg = f"Error during plan generation: {str(e)}"
         session["status"] = "error"
-        session["error"] = f"Error during plan generation: {str(e)}"
+        session["error"] = error_msg
         research_sessions[session_id] = session
-        print(f"Error in plan generation: {str(e)}")
+        print(f"Error in plan generation: {error_msg}")
 
 async def process_web_search(session_id: str, search_plan: SearchPlan):
     """Process web search in the background"""
