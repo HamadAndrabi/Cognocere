@@ -21,15 +21,23 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 1440
 
     # Google OAuth Settings
-    google_client_id: str
-    google_client_secret: str
-    google_redirect_uri: str = "http://localhost:3000/auth/callback"
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:3000/auth/google/callback"
 
     # CORS Settings
-    allow_origins: List[str] = ["http://localhost:3000"]
+    allow_origins: list[str] = ["http://localhost:3000"]
     allow_credentials: bool = True
-    allow_methods: List[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"] # Changed to List[str]
-    allow_headers: List[str] = ["*"]
+    allow_methods: list[str] = ["*"]
+    allow_headers: list[str] = ["*"]
     
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False
+    }
+
+    # Search API settings
+    serper_api_key: str = ""
+    serper_api_url: str = "https://google.serper.dev/search"
 

@@ -81,10 +81,21 @@ export const AuthContextProvider = ({ children }) => {
     setError(null);
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/google/callback`, {
-        code,
-        redirect_uri: redirectUri
-      });
+      const formData = new FormData();
+      formData.append('code', code);
+      if (redirectUri) {
+        formData.append('redirect_uri', redirectUri);
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/google/callback`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
       
       const { access_token, user: userData } = response.data;
       

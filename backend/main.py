@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks,Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
@@ -66,11 +66,27 @@ async def get_google_auth_url():
     return {"auth_url": auth_url}
 
 @app.post("/api/auth/google/callback")
-async def google_callback(code: str, redirect_uri: str):
+async def google_callback(
+    code: str = Form(...),
+    redirect_uri: str = Form(None),
+    state: str = Form(None),
+    error: str = Form(None)
+):
     """Handle Google OAuth callback with authorization code"""
     try:
-        # For now, just return a success response
-        # In a real implementation, we would exchange the code for tokens
+        if error:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Google authentication error: {error}"
+            )
+
+        if not code:
+            raise HTTPException(
+                status_code=400,
+                detail="No authorization code received"
+            )
+
+        # Here you would implement the code exchange for tokens
         return {
             "access_token": "dummy_token",
             "token_type": "bearer",
@@ -201,8 +217,15 @@ async def process_plan_generation(session_id: str, query: str, clarification_ans
         
         # Continue with web search automatically
         await process_web_search(session_id, search_plan)
+    except AttributeError as e:
+        # Handle missing configuration
+        error_msg = "Missing required configuration. Please check your .env file and Settings class."
+        session["status"] = "error"
+        session["error"] = error_msg
+        research_sessions[session_id] = session
+        print(f"Configuration error: {error_msg}")
     except Exception as e:
-        # Handle error
+        # Handle other errors
         session["status"] = "error"
         session["error"] = f"Error during plan generation: {str(e)}"
         research_sessions[session_id] = session
