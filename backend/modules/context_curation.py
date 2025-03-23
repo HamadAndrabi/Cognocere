@@ -156,7 +156,7 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
         structure_prompt = f"""
         Analyze the following research content and create a structural outline:
         
-        {content[:2000]}...  # Send a sample of the content
+        {content}...  # Send a sample of the content
         
         Generate a JSON structure that outlines the main topics, subtopics, and key points covered.
         This structure will be used to organize the final report.

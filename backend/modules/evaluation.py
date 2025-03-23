@@ -16,7 +16,9 @@ async def evaluate_context(
     curated_context: CuratedContext, 
     topic: str, 
     clarification_answers: Dict[str, str],
-    iteration: int = 1
+    iteration: int = 1,
+    clarification_questions=None
+
 ) -> EvaluationResult:
     """
     Evaluate the curated context for completeness and quality.
@@ -26,15 +28,26 @@ async def evaluate_context(
         topic: The original research topic
         clarification_answers: The answers to clarification questions
         iteration: Current iteration number (to limit cycles)
+        clarification_questions: Optional dictionary containing the clarification questions
         
     Returns:
         An EvaluationResult with assessment and recommendations
     """
     # Format clarification answers for the prompt
-    formatted_answers = "\n".join([
-        f"Question: {q_id}\nAnswer: {answer}" 
-        for q_id, answer in clarification_answers.get("answers", {}).items()
-    ])
+    formatted_answers = []
+    
+    for q_id, answer in clarification_answers.get("answers", {}).items():
+        # Try to get the actual question text if clarification_questions is provided
+        question_text = q_id
+        if clarification_questions and "questions" in clarification_questions:
+            for q in clarification_questions["questions"]:
+                if q.get("id") == q_id:
+                    question_text = q.get("question", q_id)
+                    break
+        
+        formatted_answers.append(f"Question: {question_text}\nAnswer: {answer}")
+    
+    formatted_answers_text = "\n".join(formatted_answers)
     
     # After 2 iterations, we should be more lenient
     leniency_modifier = ""
@@ -67,10 +80,10 @@ async def evaluate_context(
     Topic: "{topic}"
     
     User clarifications:
-    {formatted_answers}
+    {formatted_answers_text}
     
     The current research content includes:
-    {curated_context.content[:3000]}...  # Send a sample of the content
+    {curated_context.content}  # Send the full content
     
     {leniency_modifier}
     
