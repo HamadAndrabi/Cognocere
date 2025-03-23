@@ -17,7 +17,9 @@ Organize information logically with clear sections, an introduction, and a concl
 async def generate_report(
     curated_context: CuratedContext,
     topic: str,
-    clarification_answers: Dict[str, str]
+    clarification_answers: Dict[str, str],
+    iteration: int = 1,
+    clarification_questions: Dict[str, Any] = None
 ) -> FinalReport:
     """
     Generate a final research report based on the curated context.
@@ -26,15 +28,27 @@ async def generate_report(
         curated_context: The curated research context
         topic: The original research topic
         clarification_answers: The answers to clarification questions
+        iteration: Current iteration number
+        clarification_questions: Optional dictionary containing the clarification questions
         
     Returns:
         A FinalReport with complete research findings
     """
     # Format clarification answers for the prompt
-    formatted_answers = "\n".join([
-        f"Question: {q_id}\nAnswer: {answer}" 
-        for q_id, answer in clarification_answers.get("answers", {}).items()
-    ])
+    formatted_answers = []
+    
+    for q_id, answer in clarification_answers.get("answers", {}).items():
+        # Try to get the actual question text if clarification_questions is provided
+        question_text = q_id
+        if clarification_questions and "questions" in clarification_questions:
+            for q in clarification_questions["questions"]:
+                if q.get("id") == q_id:
+                    question_text = q.get("question", q_id)
+                    break
+        
+        formatted_answers.append(f"Question: {question_text}\nAnswer: {answer}")
+    
+    formatted_answers_text = "\n".join(formatted_answers)
     
     # Extract structure from curated context
     structure = curated_context.structure
@@ -46,7 +60,7 @@ async def generate_report(
     Topic: "{topic}"
     
     User clarifications:
-    {formatted_answers}
+    {formatted_answers_text}
     
     The title should be concise, descriptive, and engaging.
     """
@@ -69,7 +83,10 @@ async def generate_report(
     Topic: "{topic}"
     
     User clarifications:
-    {formatted_answers}
+    {formatted_answers_text}
+    
+    Clarification questions:
+    {json.dumps(clarification_questions, indent=2)}
     
     The introduction should:
     1. Provide background on the topic
@@ -103,6 +120,12 @@ async def generate_report(
         
         Research Content:
         {curated_context.content}
+        
+        User clarifications:
+        {formatted_answers_text}
+        
+        Clarification questions:
+        {json.dumps(clarification_questions, indent=2)}
         
         Write a comprehensive section that:
         1. Covers the key information related to "{main_title}"
@@ -140,6 +163,12 @@ async def generate_report(
     
     The main sections of the report are:
     {", ".join([s.title for s in sections])}
+    
+    User clarifications:
+    {formatted_answers_text}
+    
+    Clarification questions:
+    {json.dumps(clarification_questions, indent=2)}
     
     The conclusion should:
     1. Summarize the key findings from the research

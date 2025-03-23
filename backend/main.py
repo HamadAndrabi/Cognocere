@@ -160,7 +160,7 @@ async def get_clarification_questions(session_id: str):
     if session["clarification_questions"] is None:
         questions = await generate_clarification_questions(session["query"]["topic"])
         
-        session["clarification_questions"] = questions.dict()
+        session["clarification_questions"] = questions.model_dump()
         session["status"] = "awaiting_clarification"
         research_sessions[session_id] = session
     
@@ -173,7 +173,7 @@ async def submit_clarification_answers(session_id: str, answers: ClarificationRe
         raise HTTPException(status_code=404, detail="Research session not found")
     
     session = research_sessions[session_id]
-    session["clarification_answers"] = answers.dict()
+    session["clarification_answers"] = answers.model_dump()
     session["status"] = "generating_plan"
     session["step"] = "plan_generation"
     research_sessions[session_id] = session
@@ -196,21 +196,22 @@ async def generate_plan(session_id: str, background_tasks: BackgroundTasks):
         process_plan_generation,
         session_id=session_id,
         query=session["query"]["topic"],
-        clarification_answers=session["clarification_answers"]
+        clarification_answers=session["clarification_answers"],
+        clarification_questions=session["clarification_questions"]
     )
     
     return {"status": "plan_generation_started"}
 
-async def process_plan_generation(session_id: str, query: str, clarification_answers: Dict):
+async def process_plan_generation(session_id: str, query: str, clarification_answers: Dict, clarification_questions: Dict):
     """Process plan generation in the background"""
     session = research_sessions[session_id]
     
     try:
         # Generate search plan
-        search_plan = await generate_search_plan(query, clarification_answers)
+        search_plan = await generate_search_plan(query, clarification_answers, clarification_questions)
         
         # Update session
-        session["search_plan"] = search_plan.dict()
+        session["search_plan"] = search_plan.model_dump()
         session["status"] = "searching_web"
         session["step"] = "web_search"
         research_sessions[session_id] = session
@@ -240,7 +241,7 @@ async def process_web_search(session_id: str, search_plan: SearchPlan):
         search_results = await perform_web_search(search_plan)
         
         # Update session
-        session["search_results"] = search_results.dict()
+        session["search_results"] = search_results.model_dump()
         session["status"] = "curating_context"
         session["step"] = "web_search"
         research_sessions[session_id] = session
@@ -263,7 +264,7 @@ async def process_context_curation(session_id: str, search_results: WebSearchRes
         curated_context = await curate_context(search_results)
         
         # Update session
-        session["curated_context"] = curated_context.dict()
+        session["curated_context"] = curated_context.model_dump()
         session["status"] = "evaluating_context"
         session["step"] = "evaluation"
         research_sessions[session_id] = session
@@ -295,7 +296,7 @@ async def process_evaluation(session_id: str, curated_context: CuratedContext):
         )
         
         # Update session
-        session["evaluation_result"] = evaluation_result.dict()
+        session["evaluation_result"] = evaluation_result.model_dump()
         
         if evaluation_result.is_sufficient:
             session["status"] = "generating_report"
@@ -334,11 +335,12 @@ async def process_report_generation(session_id: str, curated_context: CuratedCon
         final_report = await generate_report(
             curated_context,
             session["query"]["topic"],
-            session["clarification_answers"]
+            session["clarification_answers"],
+            clarification_questions=session["clarification_questions"]
         )
         
         # Update session
-        session["final_report"] = final_report.dict()
+        session["final_report"] = final_report.model_dump()
         session["status"] = "completed"
         session["step"] = "completed"
         research_sessions[session_id] = session
