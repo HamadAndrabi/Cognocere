@@ -60,13 +60,6 @@ function App() {
                   </Routes>
                 </AnimatePresence>
               </main>
-              
-              <footer className="py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-dark-border bg-white/50 backdrop-blur-sm dark:bg-dark-100/30">
-                <div className="container mx-auto px-4">
-                  <p> {new Date().getFullYear()} Cognocere - LLM-Powered Deep Researcher</p>
-                  <p className="text-xs mt-1">Designed for comprehensive research on any topic</p>
-                </div>
-              </footer>
             </div>
           </Router>
         </ResearchContextProvider>

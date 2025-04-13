@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { FaSearch, FaSpinner } from 'react-icons/fa';
+import { FaSearch, FaSpinner, FaPaperPlane } from 'react-icons/fa';
 import { GiIronHulledWarship } from 'react-icons/gi';
 import { useResearch } from '../contexts/ResearchContext';
 import { useLLM } from '../contexts/LLMContext';
@@ -19,6 +19,42 @@ const InputForm = ({ onSubmit }) => {
   const [topic, setTopic] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputError, setInputError] = useState('');
+  const textareaRef = useRef(null);
+  
+  // Add effect to prevent body scrolling
+  useEffect(() => {
+    // Save original styles
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    
+    // Prevent scrolling on body
+    document.body.style.overflow = 'hidden';
+    
+    // Cleanup function to restore original style
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
+  
+  // Function to auto-resize the textarea
+  const autoResizeTextarea = () => {
+    if (textareaRef.current) {
+      // Reset height to avoid constant growing
+      textareaRef.current.style.height = 'auto';
+      
+      // Set the height based on the scroll height
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 150); // Max height of 150px
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  };
+  
+  // Update textarea height when content changes
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [topic]);
+  
+  const handleTopicChange = (e) => {
+    setTopic(e.target.value);
+  };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,10 +91,6 @@ const InputForm = ({ onSubmit }) => {
   const handleModelChange = (e) => {
     setSelectedModel(e.target.value);
   };
-
-  const handleExampleClick = (example) => {
-    setTopic(example);
-  };
   
   // Animation variants
   const containerVariants = {
@@ -80,15 +112,6 @@ const InputForm = ({ onSubmit }) => {
     }
   };
 
-  const examples = [
-    "Climate change mitigation strategies",
-    "The impact of artificial intelligence on healthcare",
-    "Renewable energy technologies compared",
-    "The future of autonomous vehicles",
-    "Sustainable agriculture practices",
-    "Quantum computing applications"
-  ];
-
   // Group models by provider
   const groupedModels = Object.entries(models).reduce((acc, [id, model]) => {
     if (!acc[model.provider]) {
@@ -99,128 +122,90 @@ const InputForm = ({ onSubmit }) => {
   }, {});
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-primary-50 dark:from-primary-900 dark:to-primary-800 py-10">
+    <div className="fixed inset-0 bg-gradient-to-b from-white to-primary-50 dark:from-primary-900 dark:to-primary-800 flex items-center justify-center overflow-hidden">
       <motion.div
-        className="max-w-3xl mx-auto px-4"
+        className="max-w-3xl w-full mx-auto px-4"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
       >
-        <motion.div variants={itemVariants} className="mb-12 text-center">
+        <motion.div variants={itemVariants} className="mb-8 text-center">
           <div className="flex justify-center items-center mb-4">
             <div className="text-primary-500 dark:text-primary-300 text-6xl">
               <GiIronHulledWarship />
             </div>
           </div>
-          <t1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500 dark:from-primary-300 dark:to-primary-100">
+          <t1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-500 dark:from-primary-300 dark:to-primary-100">
             Cognocere
           </t1>
-          <p className="text-xl text-primary-600 dark:text-primary-300 max-w-2xl mx-auto">
-            Explore any topic with AI-powered deep research
-          </p>
         </motion.div>
         
         <motion.form 
           variants={itemVariants}
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-primary-900/40 rounded-xl shadow-card p-8 mb-10"
+          className="bg-white dark:bg-primary-900/40 rounded-xl shadow-card p-4"
         >
-          <div className="mb-6">
-            <label 
-              htmlFor="topic" 
-              className="block mb-2 font-medium text-primary-700 dark:text-primary-300"
-            >
-              What would you like to research?
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="topic"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="Enter a topic to research..."
-                className="w-full px-4 py-3 pl-12 rounded-lg border-2 border-primary-100 dark:border-primary-700 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-500/30 bg-transparent text-primary-900 dark:text-primary-100 outline-none transition-all"
-                disabled={isSubmitting}
-              />
-              <FaSearch className="absolute left-4 top-3.5 text-lg text-primary-400 dark:text-primary-500" />
-            </div>
-            {inputError && (
-              <p className="mt-2 text-red-500 dark:text-red-400 text-sm">{inputError}</p>
-            )}
-          </div>
-
-          <div className="mb-6">
-            <label 
-              htmlFor="model" 
-              className="block mb-2 font-medium text-primary-700 dark:text-primary-300"
-            >
-              Select AI Model
-            </label>
-            <select
-              id="model"
-              value={selectedModel}
-              onChange={handleModelChange}
-              className="w-full px-4 py-3 rounded-lg border-2 border-primary-100 dark:border-primary-700 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-500/30 bg-transparent text-primary-900 dark:text-primary-100 outline-none transition-all"
+          <div className="relative mb-2">
+            <textarea
+              ref={textareaRef}
+              placeholder="How can I help you today?"
+              value={topic}
+              onChange={handleTopicChange}
+              className="w-full px-5 py-4 pl-12 pr-4 rounded-lg bg-transparent text-primary-900 dark:text-primary-100 outline-none transition-all resize-none overflow-y-auto border-0 shadow-sm focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-500/30"
               disabled={isSubmitting}
-            >
-              {Object.entries(groupedModels).map(([provider, providerModels]) => (
-                <optgroup key={provider} label={provider.toUpperCase()}>
-                  {providerModels.map(model => (
-                    <option key={model.id} value={model.id}>
-                      {model.name} - {model.description}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              style={{ minHeight: '56px', maxHeight: '150px' }}
+            />
+            <FaSearch className="absolute left-4 top-5 text-lg text-primary-400 dark:text-primary-500" />
           </div>
           
-          <div className="flex justify-center">
+          <div className="flex items-center justify-end mt-2">
+            <div className="relative mr-2 group">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-primary-200 dark:border-primary-700 bg-white dark:bg-primary-800 hover:border-primary-300 dark:hover:border-primary-600 shadow-sm transition-all duration-150 cursor-pointer">
+                <span className="text-primary-900 dark:text-primary-100 text-sm font-medium">
+                  {models[selectedModel]?.name || 'Select Model'}
+                </span>
+                <svg className="h-4 w-4 text-primary-500 transition-transform duration-200 group-hover:text-primary-600" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+                <select
+                  id="model"
+                  value={selectedModel}
+                  onChange={handleModelChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  {Object.entries(groupedModels).map(([provider, providerModels]) => (
+                    <optgroup key={provider} label={provider.toUpperCase()}>
+                      {providerModels.map(model => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
             <button
               type="submit"
-              className="w-full py-3 px-6 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-medium rounded-lg flex items-center justify-center transition-all duration-300 disabled:opacity-70"
+              className="p-2 rounded-lg bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white transition-all duration-300 disabled:opacity-70 flex items-center justify-center"
               disabled={isSubmitting}
+              aria-label="Send"
             >
               {isSubmitting ? (
-                <>
-                  <FaSpinner className="animate-spin mr-2" />
-                  Starting Research...
-                </>
+                <FaSpinner className="animate-spin" />
               ) : (
-                <>
-                  Start Deep Research
-                </>
+                <FaPaperPlane />
               )}
             </button>
           </div>
           
-          <div className="mt-6 text-sm text-primary-600 dark:text-primary-400">
-            <p className="text-center">Our AI will analyze your topic, ask clarifying questions, search the web, and create a detailed report with references.</p>
-          </div>
+          {inputError && (
+            <p className="mt-2 text-red-500 dark:text-red-400 text-sm">{inputError}</p>
+          )}
         </motion.form>
-        
-        <motion.div variants={itemVariants} className="mb-10">
-          <h3 className="text-xl font-semibold mb-4 text-primary-700 dark:text-primary-300 text-center">
-            Popular Research Topics
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {examples.map((example, index) => (
-              <div 
-                key={index}
-                onClick={() => handleExampleClick(example)}
-                className="p-4 rounded-lg border-2 border-primary-100 dark:border-primary-700/60 hover:border-primary-400 dark:hover:border-primary-500 bg-white dark:bg-primary-900/40 cursor-pointer hover:shadow-md transition-all duration-200 text-primary-700 dark:text-primary-300"
-              >
-                {example}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-        
-        <motion.div variants={itemVariants} className="text-center">
-          <p className="text-primary-600 dark:text-primary-400 max-w-xl mx-auto">
-            Cognocere uses AI to conduct deep research on any topic, analyzing multiple sources to provide comprehensive, fact-based reports with proper citations.
-          </p>
-        </motion.div>
       </motion.div>
     </div>
   );
