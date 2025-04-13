@@ -151,7 +151,7 @@ const Header = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleDarkMode}
-            className="p-2 rounded-full text-white dark:text-white hover:bg-white/10 dark:hover:bg-dark-100/30 transition-colors"
+            className="p-2 rounded-full text-primary-600 dark:text-primary-300 hover:bg-primary-100/50 dark:hover:bg-primary-800/30 transition-colors"
             aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
             {darkMode ? <FaSun className="text-xl" /> : <FaMoon className="text-xl" />}
@@ -163,7 +163,7 @@ const Header = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="flex items-center space-x-2 p-1 px-2 rounded-full hover:bg-white/10 dark:hover:bg-dark-100/30"
+                className="flex items-center space-x-2 p-1 px-2 rounded-full text-primary-600 dark:text-primary-300 hover:bg-primary-100/50 dark:hover:bg-primary-800/30"
               >
                 {user?.picture ? (
                   <img 
@@ -172,9 +172,9 @@ const Header = () => {
                     className="w-8 h-8 rounded-full border-2 border-white/50"
                   />
                 ) : (
-                  <FaUserCircle className="text-white text-2xl" />
+                  <FaUserCircle className="text-2xl" />
                 )}
-                <span className="text-white text-sm hidden md:block">
+                <span className="text-sm hidden md:block">
                   {user?.name?.split(' ')[0] || 'User'}
                 </span>
               </motion.button>
