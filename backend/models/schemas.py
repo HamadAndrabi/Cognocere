@@ -5,6 +5,7 @@ class ResearchQuery(BaseModel):
     """User's initial research query"""
     topic: str = Field(..., description="The research topic provided by the user")
     depth: Optional[str] = Field("medium", description="Desired research depth (basic, medium, deep)")
+    model_id: Optional[str] = Field(None, description="The ID of the LLM model to use")
     
 class ClarificationQuestion(BaseModel):
     """Individual clarification question"""

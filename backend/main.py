@@ -156,9 +156,13 @@ async def get_clarification_questions(session_id: str):
         raise HTTPException(status_code=404, detail="Research session not found")
     
     session = research_sessions[session_id]
+    model_id = session["query"].get("model_id")  # Get model_id from query
     
     if session["clarification_questions"] is None:
-        questions = await generate_clarification_questions(session["query"]["topic"])
+        questions = await generate_clarification_questions(
+            session["query"]["topic"],
+            model_id=model_id
+        )
         
         session["clarification_questions"] = questions.model_dump()
         session["status"] = "awaiting_clarification"
@@ -205,10 +209,16 @@ async def generate_plan(session_id: str, background_tasks: BackgroundTasks):
 async def process_plan_generation(session_id: str, query: str, clarification_answers: Dict, clarification_questions: Dict):
     """Process plan generation in the background"""
     session = research_sessions[session_id]
+    model_id = session["query"].get("model_id")  # Get model_id from query
     
     try:
         # Generate search plan
-        search_plan = await generate_search_plan(query, clarification_answers, clarification_questions)
+        search_plan = await generate_search_plan(
+            query, 
+            clarification_answers, 
+            clarification_questions,
+            model_id=model_id
+        )
         
         # Update session
         session["search_plan"] = search_plan.model_dump()
@@ -243,100 +253,117 @@ async def process_web_search(session_id: str, search_plan: SearchPlan):
         # Update session
         session["search_results"] = search_results.model_dump()
         session["status"] = "curating_context"
-        session["step"] = "web_search"
+        session["step"] = "context_curation"
         research_sessions[session_id] = session
         
-        # Continue with context curation
+        # Continue with context curation automatically
         await process_context_curation(session_id, search_results)
     except Exception as e:
-        # Handle error
+        error_msg = f"Error during web search: {str(e)}"
         session["status"] = "error"
-        session["error"] = f"Error during web search: {str(e)}"
+        session["error"] = error_msg
         research_sessions[session_id] = session
-        print(f"Error in web search: {str(e)}")
+        print(f"Error in web search: {error_msg}")
 
 async def process_context_curation(session_id: str, search_results: WebSearchResults):
     """Process context curation in the background"""
     session = research_sessions[session_id]
+    model_id = session["query"].get("model_id")  # Get model_id from query
     
     try:
         # Curate context
-        curated_context = await curate_context(search_results)
+        curated_context = await curate_context(search_results, model_id=model_id)
         
         # Update session
         session["curated_context"] = curated_context.model_dump()
-        session["status"] = "evaluating_context"
+        session["status"] = "evaluating"
         session["step"] = "evaluation"
         research_sessions[session_id] = session
         
-        # Continue with evaluation
+        # Continue with evaluation automatically
         await process_evaluation(session_id, curated_context)
     except Exception as e:
-        # Handle error
+        error_msg = f"Error during context curation: {str(e)}"
         session["status"] = "error"
-        session["error"] = f"Error during context curation: {str(e)}"
+        session["error"] = error_msg
         research_sessions[session_id] = session
-        print(f"Error in context curation: {str(e)}")
+        print(f"Error in context curation: {error_msg}")
 
 async def process_evaluation(session_id: str, curated_context: CuratedContext):
     """Process evaluation in the background"""
     session = research_sessions[session_id]
+    model_id = session["query"].get("model_id")  # Get model_id from query
     
     try:
-        # Increment the iteration counter
-        session["iterations"] = session.get("iterations", 0) + 1
-        iterations = session["iterations"]
-        
         # Evaluate context
         evaluation_result = await evaluate_context(
-            curated_context, 
-            session["query"]["topic"], 
+            curated_context,
+            session["query"]["topic"],
             session["clarification_answers"],
-            iteration=iterations
+            session["iterations"],
+            session["clarification_questions"],
+            model_id=model_id
         )
         
         # Update session
         session["evaluation_result"] = evaluation_result.model_dump()
         
         if evaluation_result.is_sufficient:
+            # If research is sufficient, move to report generation
             session["status"] = "generating_report"
             session["step"] = "report_generation"
             research_sessions[session_id] = session
             
-            # Continue with report generation
+            # Start report generation
             await process_report_generation(session_id, curated_context)
         else:
-            # Need more research
-            session["status"] = "searching_web_again"
-            session["step"] = "web_search"
-            research_sessions[session_id] = session
+            # If more research is needed, increment iteration counter
+            session["iterations"] += 1
             
-            # Update search plan for another round
-            new_plan = SearchPlan(
-                queries=evaluation_result.additional_queries,
-                depth=session["search_plan"]["depth"] + 1
-            )
-            
-            # Continue with another web search
-            await process_web_search(session_id, new_plan)
+            if session["iterations"] >= 4:
+                # Force completion after 4 iterations
+                session["status"] = "generating_report"
+                session["step"] = "report_generation"
+                research_sessions[session_id] = session
+                
+                # Start report generation
+                await process_report_generation(session_id, curated_context)
+            else:
+                # Start another research iteration
+                session["status"] = "generating_plan"
+                session["step"] = "plan_generation"
+                research_sessions[session_id] = session
+                
+                # Generate new search plan with additional queries
+                new_plan = SearchPlan(
+                    queries=evaluation_result.additional_queries,
+                    depth=session["iterations"] + 1
+                )
+                
+                # Start new iteration
+                await process_web_search(session_id, new_plan)
+                
     except Exception as e:
-        # Handle error
+        error_msg = f"Error during evaluation: {str(e)}"
         session["status"] = "error"
-        session["error"] = f"Error during evaluation: {str(e)}"
+        session["error"] = error_msg
         research_sessions[session_id] = session
-        print(f"Error in evaluation: {str(e)}")
+        print(f"Error in evaluation: {error_msg}")
 
 async def process_report_generation(session_id: str, curated_context: CuratedContext):
     """Process report generation in the background"""
     session = research_sessions[session_id]
+    model_id = session["query"].get("model_id")  # Get model_id from query
     
     try:
-        # Generate final report
+        # Generate report
         final_report = await generate_report(
             curated_context,
             session["query"]["topic"],
             session["clarification_answers"],
-            clarification_questions=session["clarification_questions"]
+            session["iterations"],
+            session["clarification_questions"],
+            model_id=model_id
         )
         
         # Update session
@@ -345,11 +372,11 @@ async def process_report_generation(session_id: str, curated_context: CuratedCon
         session["step"] = "completed"
         research_sessions[session_id] = session
     except Exception as e:
-        # Handle error
+        error_msg = f"Error during report generation: {str(e)}"
         session["status"] = "error"
-        session["error"] = f"Error during report generation: {str(e)}"
+        session["error"] = error_msg
         research_sessions[session_id] = session
-        print(f"Error in report generation: {str(e)}")
+        print(f"Error in report generation: {error_msg}")
 
 @app.get("/api/research/{session_id}/status")
 async def get_research_status(session_id: str):

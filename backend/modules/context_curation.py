@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 import asyncio
 from collections import defaultdict
@@ -14,12 +14,13 @@ Focus on facts, insights, and information that directly relates to the research 
 Maintain neutrality and present multiple perspectives where applicable.
 """
 
-async def curate_context(search_results: WebSearchResults) -> CuratedContext:
+async def curate_context(search_results: WebSearchResults, model_id: Optional[str] = None) -> CuratedContext:
     """
     Curate and organize web search results into a coherent context.
     
     Args:
         search_results: The web search results
+        model_id: Optional ID of the LLM model to use
         
     Returns:
         A CuratedContext object with organized content and source information
@@ -120,7 +121,9 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
                 
                 summary = await get_llm_response(
                     prompt=summary_prompt,
-                    system_message=CURATION_SYSTEM_MESSAGE
+                    system_message=CURATION_SYSTEM_MESSAGE,
+                    model_id=model_id,
+                    module_name="context_curation"
                 )
                 
                 # Add to summaries and sources
@@ -179,7 +182,9 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
         structure = await get_structured_llm_response(
             prompt=structure_prompt,
             output_schema=structure_schema,
-            system_message="You are a research content analyzer. Create a structured outline of the content."
+            system_message="You are a research content analyzer. Create a structured outline of the content.",
+            model_id=model_id,
+            module_name="context_curation"
         )
         
         print("Successfully generated content structure")
@@ -201,8 +206,4 @@ async def curate_context(search_results: WebSearchResults) -> CuratedContext:
             ]
         }
     
-    return CuratedContext(
-        content=content,
-        sources=sources,
-        structure=structure
-    )
+    return CuratedContext(content=content, sources=sources, structure=structure)

@@ -1,10 +1,12 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     # API Keys
     openai_api_key: str
     serper_api_key: str
+    google_api_key: str  # Added for Gemini API
+    groq_api_key: Optional[str] = None  # Optional Groq API key
 
     # LLM Settings
     llm_model: str = "gpt-4o"
@@ -40,4 +42,3 @@ class Settings(BaseSettings):
     # Search API settings
     serper_api_key: str = ""
     serper_api_url: str = "https://google.serper.dev/search"
-

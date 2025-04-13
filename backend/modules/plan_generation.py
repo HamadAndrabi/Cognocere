@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 
 from models.schemas import SearchPlan
@@ -12,7 +12,12 @@ Your goal is to generate specific search queries that will yield comprehensive a
 Each query should target a different aspect of the topic to ensure thorough coverage.
 """
 
-async def generate_search_plan(topic: str, clarification_answers: Dict[str, str], clarification_questions=None) -> SearchPlan:
+async def generate_search_plan(
+    topic: str, 
+    clarification_answers: Dict[str, str], 
+    clarification_questions=None,
+    model_id: Optional[str] = None
+) -> SearchPlan:
     """
     Generate a search plan based on the research topic and clarification answers.
     
@@ -20,6 +25,7 @@ async def generate_search_plan(topic: str, clarification_answers: Dict[str, str]
         topic: The research topic
         clarification_answers: The answers to clarification questions
         clarification_questions: Optional dictionary containing the clarification questions
+        model_id: Optional ID of the LLM model to use
         
     Returns:
         A SearchPlan object with specific search queries
@@ -72,7 +78,9 @@ async def generate_search_plan(topic: str, clarification_answers: Dict[str, str]
     response = await get_structured_llm_response(
         prompt=prompt,
         output_schema=output_schema,
-        system_message=PLAN_SYSTEM_MESSAGE
+        system_message=PLAN_SYSTEM_MESSAGE,
+        model_id=model_id,
+        module_name="plan_generation"
     )
     
     return SearchPlan(
