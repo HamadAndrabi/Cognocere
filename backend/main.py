@@ -533,8 +533,10 @@ async def stream_report_generation(session_id: str):
     try:
         print(f"Starting report streaming for session {session_id}")
         
-        # Get the topic and context from the session
+        # Get the topic, context, AND model_id from the session
         topic = session["query"]["topic"]
+        # Safely get model_id, falling back to None if not present
+        model_id = session.get("query", {}).get("model_id") 
         context = session["curated_context"]["content"]
         
         # Update session status to ensure it's in report generation mode
@@ -545,18 +547,23 @@ async def stream_report_generation(session_id: str):
         # Create a prompt for report generation
         prompt = f"Generate a detailed research report on {topic} based on the following research context:\n\n{context}"
         
-        print(f"Streaming report generation for topic: {topic}")
+        print(f"Streaming report generation for topic: {topic} using model: {model_id or 'default'}")
         
-        # Return the streaming response
+        # Pass the retrieved model_id to stream_llm_response
         return StreamingResponse(
             stream_llm_response(
                 prompt=prompt,
+                model_id=model_id, # Pass the specific model_id for this session
+                module_name="report_generation", # Add module name for logging
                 system_message="You are an expert research report writer. Create a comprehensive, well-structured report based on the provided research data. Include an introduction, main sections, and a conclusion."
             ),
             media_type="text/event-stream"
         )
     except Exception as e:
         print(f"Error in report streaming: {str(e)}")
+        # Log the traceback for detailed debugging
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
 
 # Reports endpoint
