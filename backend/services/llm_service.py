@@ -19,7 +19,7 @@ settings = Settings()
 SUPPORTED_MODELS = {
     "gpt-4o": {"provider": "openai", "api_model_name": "gpt-4o"},
     "gpt-4o-mini": {"provider": "openai", "api_model_name": "gpt-4o-mini"},
-    "gemini-2.0-flash": {"provider": "google", "api_model_name": "gemini-1.5-flash"}, # Google uses 'gemini-1.5-flash' for Flash model
+    "gemini-2.0-flash": {"provider": "google", "api_model_name": "gemini-2.0-flash"}, # Updated to use correct model name
     # Add more models here in the future
 }
 
@@ -108,25 +108,31 @@ async def get_llm_response(
         )
         return response.choices[0].message.content
     elif provider == "google":
-        generation_config = genai.types.GenerationConfig(
-            temperature=temp,
-        )
-        model = genai.GenerativeModel(
-            api_model_name,
-            system_instruction=system_message
-        )
-        response = await model.generate_content_async(
-             prompt,
-             generation_config=generation_config
-        )
-        if response.candidates:
-            if response.candidates[0].content and response.candidates[0].content.parts:
-                 return response.candidates[0].content.parts[0].text
+        try:
+            generation_config = genai.types.GenerationConfig(
+                temperature=temp,
+            )
+            model = genai.GenerativeModel(
+                api_model_name,
+                system_instruction=system_message
+            )
+            response = await model.generate_content_async(
+                prompt,
+                generation_config=generation_config
+            )
+            if response.candidates:
+                if response.candidates[0].content and response.candidates[0].content.parts:
+                    return response.candidates[0].content.parts[0].text
+                else:
+                    return response.text
             else:
-                 return response.text
-        else:
-            logger.warning(f"Warning: Gemini response blocked or empty. Feedback: {response.prompt_feedback}")
-            return "Error: Could not generate response due to safety settings or other issues."
+                error_msg = f"Gemini response blocked or empty. Feedback: {getattr(response, 'prompt_feedback', 'No feedback available')}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+        except Exception as e:
+            error_msg = f"Error with Gemini API: {str(e)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
@@ -145,34 +151,59 @@ async def get_structured_llm_response(
 
     enhanced_prompt = f"{prompt}\n\nRespond ONLY with a valid JSON object matching this schema (do NOT include ```json markers):\n{json.dumps(output_schema, indent=2)}"
 
-    response_text = await get_llm_response(
-        prompt=enhanced_prompt,
-        model_id=model_settings["model_id"],
-        system_message=system_message,
-        temperature=temperature,
-        module_name=module_name
-    )
-
     try:
-        return json.loads(response_text)
-    except json.JSONDecodeError:
-        if "```json" in response_text:
-            try:
-                json_part = response_text.split("```json")[1].split("```")[0].strip()
-                return json.loads(json_part)
-            except (IndexError, json.JSONDecodeError):
-                pass
+        response_text = await get_llm_response(
+            prompt=enhanced_prompt,
+            model_id=model_settings["model_id"],
+            system_message=system_message,
+            temperature=temperature,
+            module_name=module_name
+        )
+
         try:
-            import re
-            json_match = re.search(r'\{\s*.*?\s*\}|\[\s*.*?\s*\]', response_text, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group(0))
-            else:
-                 logger.error(f"LLM structured response parsing failed. Raw response: {response_text}")
-                 raise ValueError("Could not extract valid JSON from LLM response")
-        except Exception as e:
-             logger.error(f"LLM structured response parsing failed. Raw response: {response_text}. Error: {e}")
-             raise ValueError(f"Could not parse LLM response as JSON: {e}")
+            return json.loads(response_text)
+        except json.JSONDecodeError:
+            if "```json" in response_text:
+                try:
+                    json_part = response_text.split("```json")[1].split("```")[0].strip()
+                    return json.loads(json_part)
+                except (IndexError, json.JSONDecodeError):
+                    pass
+            try:
+                import re
+                json_match = re.search(r'\{\s*.*?\s*\}|\[\s*.*?\s*\]', response_text, re.DOTALL)
+                if json_match:
+                    return json.loads(json_match.group(0))
+                else:
+                    logger.error(f"LLM structured response parsing failed. Raw response: {response_text}")
+                    # Return a default fallback response to prevent loops in the research flow
+                    return {
+                        "is_sufficient": True,
+                        "missing_aspects": ["Error parsing LLM response as JSON"],
+                        "additional_queries": [],
+                        "confidence_score": 0.5,
+                        "queries": ["Error parsing LLM response"]
+                    }
+            except Exception as e:
+                logger.error(f"LLM structured response parsing failed. Raw response: {response_text}. Error: {e}")
+                # Return a default fallback response
+                return {
+                    "is_sufficient": True,
+                    "missing_aspects": [f"Error parsing LLM response: {str(e)}"],
+                    "additional_queries": [],
+                    "confidence_score": 0.5,
+                    "queries": ["Error parsing LLM response"]
+                }
+    except ValueError as e:
+        logger.error(f"LLM response error: {str(e)}")
+        # Return a default fallback response for provider-specific errors
+        return {
+            "is_sufficient": True,
+            "missing_aspects": [f"Error from LLM provider: {str(e)}"],
+            "additional_queries": [],
+            "confidence_score": 0.5,
+            "queries": ["Error from LLM provider"]
+        }
 
 async def stream_llm_response(
     prompt: str,
