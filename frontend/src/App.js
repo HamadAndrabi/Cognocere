@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Context providers
 import { ResearchContextProvider } from './contexts/ResearchContext';
 import { AuthContextProvider } from './contexts/AuthContext';
+import { LLMProvider } from './contexts/LLMContext';
 
 // Components
 import Header from './components/Header';
@@ -22,52 +23,54 @@ import ProfileSettings from './components/ProfileSettings';
 function App() {
   return (
     <AuthContextProvider>
-      <ResearchContextProvider>
-        <Router>
-          <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white dark:from-dark-200 dark:to-dark-300 flex flex-col">
-            <Header />
-            
-            <main className="flex-grow container mx-auto px-4 py-6">
-              <AnimatePresence mode="wait">
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  
-                  {/* Research flow - available to all users */}
-                  <Route path="/" element={<ResearchFlow initialStage="input" />} />
-                  <Route path="/research" element={<ResearchFlow initialStage="input" />} />
-                  <Route path="/research/clarification" element={<ResearchFlow initialStage="clarification" />} />
-                  <Route path="/research/processing" element={<ResearchFlow initialStage="processing" />} />
-                  <Route path="/research/report" element={<ResearchFlow initialStage="report" />} />
-                  
-                  {/* Protected routes */}
-                  <Route path="/reports" element={
-                    <ProtectedRoute>
-                      <UserReports />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/profile" element={
-                    <ProtectedRoute>
-                      <ProfileSettings />
-                    </ProtectedRoute>
-                  } />
-                  
-                  {/* Fallback route */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </AnimatePresence>
-            </main>
-            
-            <footer className="py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-dark-border bg-white/50 backdrop-blur-sm dark:bg-dark-100/30">
-              <div className="container mx-auto px-4">
-                <p>© {new Date().getFullYear()} Cognocere - LLM-Powered Deep Researcher</p>
-                <p className="text-xs mt-1">Designed for comprehensive research on any topic</p>
-              </div>
-            </footer>
-          </div>
-        </Router>
-      </ResearchContextProvider>
+      <LLMProvider>
+        <ResearchContextProvider>
+          <Router>
+            <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white dark:from-dark-200 dark:to-dark-300 flex flex-col">
+              <Header />
+              
+              <main className="flex-grow container mx-auto px-4 py-6">
+                <AnimatePresence mode="wait">
+                  <Routes>
+                    {/* Public routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+                    
+                    {/* Research flow - available to all users */}
+                    <Route path="/" element={<ResearchFlow initialStage="input" />} />
+                    <Route path="/research" element={<ResearchFlow initialStage="input" />} />
+                    <Route path="/research/clarification" element={<ResearchFlow initialStage="clarification" />} />
+                    <Route path="/research/processing" element={<ResearchFlow initialStage="processing" />} />
+                    <Route path="/research/report" element={<ResearchFlow initialStage="report" />} />
+                    
+                    {/* Protected routes */}
+                    <Route path="/reports" element={
+                      <ProtectedRoute>
+                        <UserReports />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/profile" element={
+                      <ProtectedRoute>
+                        <ProfileSettings />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Fallback route */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </AnimatePresence>
+              </main>
+              
+              <footer className="py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-dark-border bg-white/50 backdrop-blur-sm dark:bg-dark-100/30">
+                <div className="container mx-auto px-4">
+                  <p> {new Date().getFullYear()} Cognocere - LLM-Powered Deep Researcher</p>
+                  <p className="text-xs mt-1">Designed for comprehensive research on any topic</p>
+                </div>
+              </footer>
+            </div>
+          </Router>
+        </ResearchContextProvider>
+      </LLMProvider>
     </AuthContextProvider>
   );
 }

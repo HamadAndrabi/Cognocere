@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 
 from models.schemas import CuratedContext, EvaluationResult
@@ -17,8 +17,8 @@ async def evaluate_context(
     topic: str, 
     clarification_answers: Dict[str, str],
     iteration: int = 1,
-    clarification_questions=None
-
+    clarification_questions=None,
+    model_id: Optional[str] = None
 ) -> EvaluationResult:
     """
     Evaluate the curated context for completeness and quality.
@@ -29,6 +29,7 @@ async def evaluate_context(
         clarification_answers: The answers to clarification questions
         iteration: Current iteration number (to limit cycles)
         clarification_questions: Optional dictionary containing the clarification questions
+        model_id: Optional ID of the LLM model to use
         
     Returns:
         An EvaluationResult with assessment and recommendations
@@ -109,7 +110,9 @@ async def evaluate_context(
         response = await get_structured_llm_response(
             prompt=prompt,
             output_schema=output_schema,
-            system_message=EVALUATION_SYSTEM_MESSAGE
+            system_message=EVALUATION_SYSTEM_MESSAGE,
+            model_id=model_id,
+            module_name="evaluation"
         )
         
         # Override the result if we've gone through enough iterations

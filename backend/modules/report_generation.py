@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 import time
 
@@ -19,7 +19,8 @@ async def generate_report(
     topic: str,
     clarification_answers: Dict[str, str],
     iteration: int = 1,
-    clarification_questions: Dict[str, Any] = None
+    clarification_questions: Dict[str, Any] = None,
+    model_id: Optional[str] = None
 ) -> FinalReport:
     """
     Generate a final research report based on the curated context.
@@ -30,6 +31,7 @@ async def generate_report(
         clarification_answers: The answers to clarification questions
         iteration: Current iteration number
         clarification_questions: Optional dictionary containing the clarification questions
+        model_id: Optional ID of the LLM model to use
         
     Returns:
         A FinalReport with complete research findings
@@ -70,7 +72,9 @@ async def generate_report(
     title_response = await get_structured_llm_response(
         prompt=title_prompt,
         output_schema=title_schema,
-        system_message="You create effective titles for research reports."
+        system_message="You create effective titles for research reports.",
+        model_id=model_id,
+        module_name="report_generation"
     )
     
     report_title = title_response.get("title", f"Research Report: {topic}")
@@ -100,7 +104,9 @@ async def generate_report(
     intro_response = await get_structured_llm_response(
         prompt=intro_prompt,
         output_schema=intro_schema,
-        system_message="You write clear, engaging introductions for research reports."
+        system_message="You write clear, engaging introductions for research reports.",
+        model_id=model_id,
+        module_name="report_generation"
     )
     
     introduction = intro_response.get("introduction", "")
@@ -146,7 +152,9 @@ async def generate_report(
         section_response = await get_structured_llm_response(
             prompt=section_prompt,
             output_schema=section_schema,
-            system_message="You write detailed, informative sections for research reports."
+            system_message="You write detailed, informative sections for research reports.",
+            model_id=model_id,
+            module_name="report_generation"
         )
         
         sections.append(ReportSection(
@@ -183,7 +191,9 @@ async def generate_report(
     conclusion_response = await get_structured_llm_response(
         prompt=conclusion_prompt,
         output_schema=conclusion_schema,
-        system_message="You write effective conclusions for research reports."
+        system_message="You write effective conclusions for research reports.",
+        model_id=model_id,
+        module_name="report_generation"
     )
     
     conclusion = conclusion_response.get("conclusion", "")
@@ -198,7 +208,6 @@ async def generate_report(
     for idx in sorted(referenced_indices):
         # Find the corresponding source
         matching_sources = [s for s in curated_context.sources if s["index"] == idx]
-        
         if matching_sources:
             source = matching_sources[0]
             references.append({

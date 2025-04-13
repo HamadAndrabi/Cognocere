@@ -16,13 +16,15 @@ const apiService = {
   /**
    * Start a new research session
    * @param {string} topic - The research topic
+   * @param {string} modelId - The ID of the LLM model to use
    * @returns {Promise} - Promise with session data
    */
-  startResearch: async (topic) => {
+  startResearch: async (topic, modelId = "gpt-4o") => {
     try {
       const response = await apiClient.post('/research/start', {
         topic,
-        depth: 'medium' // Default depth
+        model_id: modelId,
+        depth: 'medium'
       });
       return response.data;
     } catch (error) {

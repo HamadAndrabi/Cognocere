@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import json
 import uuid
 
@@ -12,12 +12,13 @@ Your goal is to ask precise questions that will help narrow down and better unde
 Generate 4-5 essential questions that would significantly improve the research process.
 """
 
-async def generate_clarification_questions(topic: str) -> ClarificationQuestions:
+async def generate_clarification_questions(topic: str, model_id: Optional[str] = None) -> ClarificationQuestions:
     """
     Generate clarification questions for a given research topic.
     
     Args:
         topic: The research topic provided by the user
+        model_id: Optional ID of the LLM model to use
         
     Returns:
         A ClarificationQuestions object with 4-5 questions
@@ -45,7 +46,9 @@ async def generate_clarification_questions(topic: str) -> ClarificationQuestions
     response = await get_structured_llm_response(
         prompt=prompt,
         output_schema=output_schema,
-        system_message=CLARIFICATION_SYSTEM_MESSAGE
+        system_message=CLARIFICATION_SYSTEM_MESSAGE,
+        model_id=model_id,
+        module_name="clarification"
     )
     
     # Ensure each question has a unique ID

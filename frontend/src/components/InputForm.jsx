@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FaSearch, FaSpinner } from 'react-icons/fa';
 import { GiIronHulledWarship } from 'react-icons/gi';
 import { useResearch } from '../contexts/ResearchContext';
+import { useLLM } from '../contexts/LLMContext';
 import apiService from '../services/api';
 
 const InputForm = ({ onSubmit }) => {
@@ -14,6 +15,7 @@ const InputForm = ({ onSubmit }) => {
     setError
   } = useResearch();
   
+  const { selectedModel, setSelectedModel, models } = useLLM();
   const [topic, setTopic] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputError, setInputError] = useState('');
@@ -21,7 +23,6 @@ const InputForm = ({ onSubmit }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate input
     if (!topic.trim()) {
       setInputError('Please enter a research topic');
       return;
@@ -32,18 +33,13 @@ const InputForm = ({ onSubmit }) => {
     setLoading(true);
     
     try {
-      // Start research session
-      const sessionData = await apiService.startResearch(topic);
-      
-      // Set session ID and research topic
+      const sessionData = await apiService.startResearch(topic, selectedModel);
       setSessionId(sessionData.session_id);
       setResearchTopic(topic);
       
-      // Get clarification questions
       const questionsData = await apiService.getClarificationQuestions(sessionData.session_id);
       setClarificationQuestions(questionsData.questions || []);
       
-      // Move to clarification step
       if (onSubmit) onSubmit();
       
     } catch (error) {
@@ -54,6 +50,10 @@ const InputForm = ({ onSubmit }) => {
       setIsSubmitting(false);
       setLoading(false);
     }
+  };
+
+  const handleModelChange = (e) => {
+    setSelectedModel(e.target.value);
   };
 
   const handleExampleClick = (example) => {
@@ -88,6 +88,15 @@ const InputForm = ({ onSubmit }) => {
     "Sustainable agriculture practices",
     "Quantum computing applications"
   ];
+
+  // Group models by provider
+  const groupedModels = Object.entries(models).reduce((acc, [id, model]) => {
+    if (!acc[model.provider]) {
+      acc[model.provider] = [];
+    }
+    acc[model.provider].push({ id, ...model });
+    return acc;
+  }, {});
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-primary-50 dark:from-primary-900 dark:to-primary-800 py-10">
@@ -138,6 +147,32 @@ const InputForm = ({ onSubmit }) => {
             {inputError && (
               <p className="mt-2 text-red-500 dark:text-red-400 text-sm">{inputError}</p>
             )}
+          </div>
+
+          <div className="mb-6">
+            <label 
+              htmlFor="model" 
+              className="block mb-2 font-medium text-primary-700 dark:text-primary-300"
+            >
+              Select AI Model
+            </label>
+            <select
+              id="model"
+              value={selectedModel}
+              onChange={handleModelChange}
+              className="w-full px-4 py-3 rounded-lg border-2 border-primary-100 dark:border-primary-700 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30 dark:focus:ring-primary-500/30 bg-transparent text-primary-900 dark:text-primary-100 outline-none transition-all"
+              disabled={isSubmitting}
+            >
+              {Object.entries(groupedModels).map(([provider, providerModels]) => (
+                <optgroup key={provider} label={provider.toUpperCase()}>
+                  {providerModels.map(model => (
+                    <option key={model.id} value={model.id}>
+                      {model.name} - {model.description}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
           
           <div className="flex justify-center">
