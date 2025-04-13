@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Context providers
@@ -25,43 +25,61 @@ function App() {
     <AuthContextProvider>
       <LLMProvider>
         <ResearchContextProvider>
-          <Router>
-            <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white dark:from-dark-200 dark:to-dark-300 flex flex-col">
-              <Header />
-              
-              <main className="flex-grow container mx-auto px-4 py-6">
-                <AnimatePresence mode="wait">
-                  <Routes>
-                    {/* Public routes */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/auth/callback" element={<AuthCallback />} />
-                    
-                    {/* Research flow - available to all users */}
-                    <Route path="/" element={<ResearchFlow initialStage="input" />} />
-                    <Route path="/research" element={<ResearchFlow initialStage="input" />} />
-                    <Route path="/research/clarification" element={<ResearchFlow initialStage="clarification" />} />
-                    <Route path="/research/processing" element={<ResearchFlow initialStage="processing" />} />
-                    <Route path="/research/report" element={<ResearchFlow initialStage="report" />} />
-                    
-                    {/* Protected routes */}
-                    <Route path="/reports" element={
-                      <ProtectedRoute>
-                        <UserReports />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/profile" element={
-                      <ProtectedRoute>
-                        <ProfileSettings />
-                      </ProtectedRoute>
-                    } />
-                    
-                    {/* Fallback route */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </AnimatePresence>
-              </main>
-            </div>
-          </Router>
+          <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white dark:from-dark-200 dark:to-dark-300 flex flex-col">
+            <Header />
+            
+            <main className="flex-grow container mx-auto px-4 py-6">
+              <AnimatePresence mode="wait">
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  
+                  {/* Research flow - Protected */}
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <ResearchFlow initialStage="input" />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/research" element={
+                    <ProtectedRoute>
+                      <ResearchFlow initialStage="input" />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/research/clarification" element={
+                    <ProtectedRoute>
+                      <ResearchFlow initialStage="clarification" />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/research/processing" element={
+                    <ProtectedRoute>
+                      <ResearchFlow initialStage="processing" />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/research/report" element={
+                    <ProtectedRoute>
+                      <ResearchFlow initialStage="report" />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Protected routes */}
+                  <Route path="/reports" element={
+                    <ProtectedRoute>
+                      <UserReports />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <ProfileSettings />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Fallback route */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </AnimatePresence>
+            </main>
+          </div>
         </ResearchContextProvider>
       </LLMProvider>
     </AuthContextProvider>
