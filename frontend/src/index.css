@@ -123,9 +123,9 @@
   }
   
   @keyframes sail {
-    0% { transform: rotate(-3deg) translateY(0px); }
-    50% { transform: rotate(3deg) translateY(-2px); }
-    100% { transform: rotate(-3deg) translateY(0px); }
+    0% { transform: rotate(-3deg) translateY(0px) scale(1); }
+    50% { transform: rotate(3deg) translateY(-2px) scale(1.05); }
+    100% { transform: rotate(-3deg) translateY(0px) scale(1); }
   }
   
   .ship-icon-container:hover > svg {
