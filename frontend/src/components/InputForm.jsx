@@ -131,7 +131,7 @@ const InputForm = ({ onSubmit }) => {
       >
         <motion.div variants={itemVariants} className="mb-8 text-center">
           <div className="flex justify-center items-center mb-4">
-            <div className="text-primary-500 dark:text-primary-300 text-6xl">
+            <div className="ship-icon-container text-primary-500 dark:text-primary-300 text-6xl">
               <GiIronHulledWarship />
             </div>
           </div>

@@ -121,4 +121,14 @@
     from, to { opacity: 1; }
     50% { opacity: 0; }
   }
+  
+  @keyframes sail {
+    0% { transform: rotate(-3deg) translateY(0px); }
+    50% { transform: rotate(3deg) translateY(-2px); }
+    100% { transform: rotate(-3deg) translateY(0px); }
+  }
+  
+  .ship-icon-container:hover > svg {
+    animation: sail 1.2s ease-in-out infinite;
+  }
 }

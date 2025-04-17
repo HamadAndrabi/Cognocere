@@ -36,31 +36,21 @@ function App() {
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   
                   {/* Research flow - Protected */}
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <ResearchFlow initialStage="input" />
-                    </ProtectedRoute>
-                  } />
+                  {/* Consolidated research flow route */}
                   <Route path="/research" element={
                     <ProtectedRoute>
-                      <ResearchFlow initialStage="input" />
+                      {/* Always start the flow from the input stage */}
+                      <ResearchFlow initialStage="input" /> 
                     </ProtectedRoute>
                   } />
-                  <Route path="/research/clarification" element={
-                    <ProtectedRoute>
-                      <ResearchFlow initialStage="clarification" />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/research/processing" element={
-                    <ProtectedRoute>
-                      <ResearchFlow initialStage="processing" />
-                    </ProtectedRoute>
-                  } />
+                  {/* Keep separate route for direct access to report if needed, or remove if not */}
+                  {/* 
                   <Route path="/research/report" element={
                     <ProtectedRoute>
                       <ResearchFlow initialStage="report" />
                     </ProtectedRoute>
                   } />
+                  */}
                   
                   {/* Protected routes */}
                   <Route path="/reports" element={
@@ -75,7 +65,7 @@ function App() {
                   } />
                   
                   {/* Fallback route */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<Navigate to="/research" replace />} />
                 </Routes>
               </AnimatePresence>
             </main>
