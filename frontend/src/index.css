@@ -131,4 +131,42 @@
   .ship-icon-container:hover > svg {
     animation: sail 1.2s ease-in-out infinite;
   }
+  
+  /* Style for select dropdowns to ensure consistent fonts */
+  select option, select optgroup {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500;
+  }
+  
+  /* Class-based styling for select dropdown in both light and dark modes */
+  html select option, 
+  html select optgroup {
+    background-color: white !important;
+    color: #0f172a !important; /* matches primary-900 */
+  }
+  
+  html.dark select option,
+  html.dark select optgroup {
+    background-color: #1e293b !important; /* matches primary-800 */
+    color: #f1f5f9 !important; /* matches primary-100 */
+  }
+}
+
+/* Apply transitions to all elements for smooth theme changes */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Elements that shouldn't have transitions */
+.notransition * {
+  transition: none !important;
+}
+
+/* Reduce motion if user prefers it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }
