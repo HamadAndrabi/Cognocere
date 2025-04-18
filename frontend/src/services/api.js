@@ -125,6 +125,37 @@ const apiService = {
    */
   streamReportGeneration: (sessionId) => {
     return new EventSource(`${API_BASE_URL}/research/${sessionId}/report/stream`);
+  },
+  
+  /**
+   * Send a direct query to the LLM
+   * @param {string} query - The user's query
+   * @param {string} modelId - The ID of the LLM model to use
+   * @returns {Promise} - Promise with LLM response
+   */
+  directLLMQuery: async (query, modelId) => {
+    try {
+      const response = await apiClient.post('/llm/query', {
+        query,
+        model_id: modelId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error querying LLM:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create an event source for streaming LLM responses
+   * @param {string} query - The user's query
+   * @param {string} modelId - The ID of the LLM model to use
+   * @returns {EventSource} - Event source for streaming
+   */
+  streamLLMResponse: (query, modelId) => {
+    const encodedQuery = encodeURIComponent(query);
+    const encodedModelId = encodeURIComponent(modelId);
+    return new EventSource(`${API_BASE_URL}/llm/stream?query=${encodedQuery}&model_id=${encodedModelId}`);
   }
 };
 

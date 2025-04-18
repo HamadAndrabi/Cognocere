@@ -25,6 +25,9 @@ export const ResearchContextProvider = ({ children }) => {
   const [finalReport, setFinalReport] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isDeepResearch, setIsDeepResearch] = useState(false);
+  const [directQuery, setDirectQuery] = useState('');
+  const [directResponse, setDirectResponse] = useState('');
 
   // Reset the research state
   const resetResearch = () => {
@@ -37,6 +40,9 @@ export const ResearchContextProvider = ({ children }) => {
     setStreamingContent('');
     setFinalReport(null);
     setError(null);
+    setIsDeepResearch(false);
+    setDirectQuery('');
+    setDirectResponse('');
   };
 
   // Update clarification answer
@@ -75,7 +81,13 @@ export const ResearchContextProvider = ({ children }) => {
     setError,
     loading,
     setLoading,
-    resetResearch
+    resetResearch,
+    isDeepResearch,
+    setIsDeepResearch,
+    directQuery,
+    setDirectQuery,
+    directResponse,
+    setDirectResponse
   };
 
   return (

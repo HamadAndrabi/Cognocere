@@ -43,7 +43,9 @@ const InputForm = ({ onSubmit }) => {
     setSessionId, 
     setClarificationQuestions,
     setLoading,
-    setError
+    setError,
+    setIsDeepResearch,
+    setDirectQuery
   } = useResearch();
   
   const { selectedModel, setSelectedModel, models } = useLLM();
@@ -51,6 +53,7 @@ const InputForm = ({ onSubmit }) => {
   const [topic, setTopic] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputError, setInputError] = useState('');
+  const [useDeepResearch, setUseDeepResearch] = useState(false);
   const textareaRef = useRef(null);
   const [displayedGreeting, setDisplayedGreeting] = useState('');
   const fullGreeting = useRef(''); // Use ref to store the full greeting without causing re-renders on change
@@ -148,18 +151,26 @@ const InputForm = ({ onSubmit }) => {
     setLoading(true);
     
     try {
-      const sessionData = await apiService.startResearch(topic, selectedModel);
-      setSessionId(sessionData.session_id);
-      setResearchTopic(topic);
-      
-      const questionsData = await apiService.getClarificationQuestions(sessionData.session_id);
-      setClarificationQuestions(questionsData.questions || []);
+      if (useDeepResearch) {
+        // Deep Research Flow
+        setIsDeepResearch(true);
+        const sessionData = await apiService.startResearch(topic, selectedModel);
+        setSessionId(sessionData.session_id);
+        setResearchTopic(topic);
+        
+        const questionsData = await apiService.getClarificationQuestions(sessionData.session_id);
+        setClarificationQuestions(questionsData.questions || []);
+      } else {
+        // Direct LLM Flow
+        setIsDeepResearch(false);
+        setDirectQuery(topic);
+      }
       
       if (onSubmit) onSubmit();
       
     } catch (error) {
-      console.error('Error starting research:', error);
-      setError('Failed to start research. Please try again.');
+      console.error('Error processing query:', error);
+      setError('Failed to process your query. Please try again.');
       setInputError('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -277,7 +288,22 @@ const InputForm = ({ onSubmit }) => {
           </div>
           
           <div className="flex items-center justify-end mt-2">
-            {/* Enhanced Model Selection Dropdown */}
+            {/* Deep Research Toggle */}
+            <button
+              type="button"
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                useDeepResearch 
+                  ? 'bg-primary-500 text-white' 
+                  : 'bg-primary-100 dark:bg-primary-700/30 text-primary-700 dark:text-primary-300 hover:bg-primary-200 dark:hover:bg-primary-700/50'
+              }`}
+              onClick={() => setUseDeepResearch(!useDeepResearch)}
+              disabled={isSubmitting}
+            >
+              <GiIronHulledWarship className="inline-block mr-1" />
+              Deep Research
+            </button>
+            
+            {/* Model Dropdown */}
             <div className="relative mr-2" ref={modelDropdownRef}>
               <button
                 type="button"

@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Context providers
-import { ResearchContextProvider } from './contexts/ResearchContext';
+import { ResearchContextProvider, useResearch } from './contexts/ResearchContext';
 import { AuthContextProvider } from './contexts/AuthContext';
 import { LLMProvider } from './contexts/LLMContext';
 
@@ -18,6 +18,7 @@ import AuthCallback from './components/AuthCallback';
 import ProtectedRoute from './components/ProtectedRoute';
 import UserReports from './components/UserReports';
 import ProfileSettings from './components/ProfileSettings';
+import LLMInteractionComponent from './components/LLMInteractionComponent';
 
 // Main App component
 function App() {
@@ -79,11 +80,24 @@ function App() {
 // Research flow component to handle the research stages
 function ResearchFlow({ initialStage }) {
   const [researchStage, setResearchStage] = React.useState(initialStage);
+  const { isDeepResearch, directQuery } = useResearch();
   
   const renderStageContent = () => {
+    // Direct LLM interaction flow
+    if (!isDeepResearch && researchStage === 'processing') {
+      return (
+        <LLMInteractionComponent 
+          query={directQuery} 
+          onComplete={() => setResearchStage('input')} 
+          onNewQuery={() => setResearchStage('input')} 
+        />
+      );
+    }
+    
+    // Deep research flow
     switch (researchStage) {
       case 'input':
-        return <InputForm onSubmit={() => setResearchStage('clarification')} />;
+        return <InputForm onSubmit={() => setResearchStage(isDeepResearch ? 'clarification' : 'processing')} />;
       case 'clarification':
         return <ClarificationQuestions onSubmit={() => setResearchStage('processing')} />;
       case 'processing':
@@ -91,7 +105,7 @@ function ResearchFlow({ initialStage }) {
       case 'report':
         return <FinalReport onNewSearch={() => setResearchStage('input')} />;
       default:
-        return <InputForm onSubmit={() => setResearchStage('clarification')} />;
+        return <InputForm onSubmit={() => setResearchStage(isDeepResearch ? 'clarification' : 'processing')} />;
     }
   };
   

@@ -16,6 +16,7 @@ from models.schemas import (
     FinalReport
 )
 from models.auth_schemas import UserDB
+from pydantic import BaseModel
 
 from modules.clarification import generate_clarification_questions
 from modules.plan_generation import generate_search_plan
@@ -586,6 +587,74 @@ async def get_user_reports():
             }
         ]
     }
+
+# Direct LLM interaction endpoints
+class LLMQuery(BaseModel):
+    query: str
+    model_id: Optional[str] = None
+
+@app.get("/api/llm/stream")
+async def stream_llm_direct_response(
+    query: str,
+    model_id: Optional[str] = None,
+    current_user: Optional[UserDB] = Depends(get_current_user)
+):
+    """Stream a direct response from the LLM for a simple query
+    
+    This endpoint bypasses the research pipeline and directly returns
+    a streaming response from the selected LLM.
+    """
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+    
+    try:
+        # Using the existing stream_llm_response function from llm_service
+        return StreamingResponse(
+            stream_llm_response(
+                prompt=query,
+                model_id=model_id,
+                module_name="direct_interaction",
+                system_message="You are a helpful AI assistant. Provide a clear, accurate and comprehensive response to the user's query."
+            ),
+            media_type="text/event-stream"
+        )
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error in LLM streaming: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
+
+@app.post("/api/llm/query")
+async def direct_llm_query(
+    llm_query: LLMQuery,
+    current_user: Optional[UserDB] = Depends(get_current_user)
+):
+    """Get a direct response from the LLM for a simple query
+    
+    This endpoint bypasses the research pipeline and directly returns
+    a response from the selected LLM.
+    """
+    if not llm_query.query:
+        raise HTTPException(status_code=400, detail="Query is required")
+    
+    try:
+        from services.llm_service import get_llm_response
+        
+        # Using the existing get_llm_response function from llm_service
+        response = await get_llm_response(
+            prompt=llm_query.query,
+            model_id=llm_query.model_id,
+            module_name="direct_interaction",
+            system_message="You are a helpful AI assistant. Provide a clear, accurate and comprehensive response to the user's query."
+        )
+        
+        return {"content": response}
+    except Exception as e:
+        print(f"Error in direct LLM query: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
