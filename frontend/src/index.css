@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,6 +9,13 @@
     @apply dark:bg-dark-200 dark:text-gray-100;
     @apply bg-gray-50 text-gray-900;
     @apply min-h-screen;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+  }
+  
+  h1, h2, h3, h4, h5, h6, t1 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
   }
   
   h1 {
@@ -28,11 +37,19 @@
   a {
     @apply text-primary-600 dark:text-primary-400 hover:underline;
   }
+
+  code, pre, textarea, input, select {
+    font-family: 'Inter', monospace;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+  }
 }
 
 @layer components {
   .btn {
     @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
   }
   
   .btn-primary {
@@ -59,6 +76,8 @@
     @apply w-full px-4 py-2 rounded-md border border-gray-300;
     @apply dark:bg-dark-100 dark:border-dark-border dark:text-gray-100;
     @apply focus:outline-none focus:ring-2 focus:ring-primary-500;
+    font-family: 'Inter', monospace;
+    font-weight: 500;
   }
   
   .step-indicator-active {
@@ -101,5 +120,53 @@
   @keyframes blink {
     from, to { opacity: 1; }
     50% { opacity: 0; }
+  }
+  
+  @keyframes sail {
+    0% { transform: rotate(-3deg) translateY(0px) scale(1); }
+    50% { transform: rotate(3deg) translateY(-2px) scale(1.05); }
+    100% { transform: rotate(-3deg) translateY(0px) scale(1); }
+  }
+  
+  .ship-icon-container:hover > svg {
+    animation: sail 1.2s ease-in-out infinite;
+  }
+  
+  /* Style for select dropdowns to ensure consistent fonts */
+  select option, select optgroup {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500;
+  }
+  
+  /* Class-based styling for select dropdown in both light and dark modes */
+  html select option, 
+  html select optgroup {
+    background-color: white !important;
+    color: #0f172a !important; /* matches primary-900 */
+  }
+  
+  html.dark select option,
+  html.dark select optgroup {
+    background-color: #1e293b !important; /* matches primary-800 */
+    color: #f1f5f9 !important; /* matches primary-100 */
+  }
+}
+
+/* Apply transitions to all elements for smooth theme changes */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Elements that shouldn't have transitions */
+.notransition * {
+  transition: none !important;
+}
+
+/* Reduce motion if user prefers it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
   }
 }

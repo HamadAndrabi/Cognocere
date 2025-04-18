@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaMoon, FaSun, FaSignInAlt, FaUserCircle, FaSignOutAlt, FaHistory, FaCog } from 'react-icons/fa';
@@ -9,10 +9,12 @@ const Header = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const profileMenuRef = useRef(null);
+  const themeTransitionTimeoutRef = useRef(null);
 
   // Initialize dark mode based on system preference or localStorage
   useEffect(() => {
@@ -28,6 +30,9 @@ const Header = () => {
 
   // Update document classes and localStorage when dark mode changes
   useEffect(() => {
+    // Remove the transition blocker class if it exists
+    document.documentElement.classList.remove('notransition');
+    
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -35,6 +40,25 @@ const Header = () => {
     }
     
     localStorage.setItem('darkMode', darkMode);
+    
+    // Set transitioning state to true
+    setIsTransitioning(true);
+    
+    // Clear any existing timeout
+    if (themeTransitionTimeoutRef.current) {
+      clearTimeout(themeTransitionTimeoutRef.current);
+    }
+    
+    // Set a timeout to mark the end of transition
+    themeTransitionTimeoutRef.current = setTimeout(() => {
+      setIsTransitioning(false);
+    }, 350); // Slightly longer than the CSS transition duration
+    
+    return () => {
+      if (themeTransitionTimeoutRef.current) {
+        clearTimeout(themeTransitionTimeoutRef.current);
+      }
+    };
   }, [darkMode]);
   
   // Add scroll effect to header
@@ -63,10 +87,19 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
+  // Toggle dark mode with debounce to prevent rapid toggling
+  const toggleDarkMode = useCallback(() => {
+    // If currently transitioning, don't allow another toggle
+    if (isTransitioning) return;
+    
+    // Add a class to prevent flashing during transition
+    document.documentElement.classList.add('notransition');
+    
+    // Use a setTimeout to ensure the class is applied before toggling
+    setTimeout(() => {
+      setDarkMode(prevMode => !prevMode);
+    }, 10);
+  }, [isTransitioning]);
   
   // Handle logout
   const handleLogout = () => {
@@ -151,7 +184,7 @@ const Header = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleDarkMode}
-            className="p-2 rounded-full text-white dark:text-white hover:bg-white/10 dark:hover:bg-dark-100/30 transition-colors"
+            className="p-2 rounded-full text-primary-600 dark:text-primary-300 hover:bg-primary-100/50 dark:hover:bg-primary-800/30 transition-colors"
             aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
             {darkMode ? <FaSun className="text-xl" /> : <FaMoon className="text-xl" />}
@@ -163,7 +196,7 @@ const Header = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="flex items-center space-x-2 p-1 px-2 rounded-full hover:bg-white/10 dark:hover:bg-dark-100/30"
+                className="flex items-center space-x-2 p-1 px-2 rounded-full text-primary-600 dark:text-primary-300 hover:bg-primary-100/50 dark:hover:bg-primary-800/30"
               >
                 {user?.picture ? (
                   <img 
@@ -172,9 +205,9 @@ const Header = () => {
                     className="w-8 h-8 rounded-full border-2 border-white/50"
                   />
                 ) : (
-                  <FaUserCircle className="text-white text-2xl" />
+                  <FaUserCircle className="text-2xl" />
                 )}
-                <span className="text-white text-sm hidden md:block">
+                <span className="text-sm hidden md:block">
                   {user?.name?.split(' ')[0] || 'User'}
                 </span>
               </motion.button>

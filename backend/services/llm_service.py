@@ -90,12 +90,11 @@ async def get_llm_response(
     provider = model_settings["provider"]
     api_model_name = model_settings["api_model_name"]
 
-    await get_api_client(provider)
+    client = await get_api_client(provider)
 
     temp = temperature if temperature is not None else settings.llm_temperature
 
     if provider == "openai":
-        client = _clients["openai"]
         tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
         response = await client.chat.completions.create(
             model=api_model_name,
@@ -220,11 +219,15 @@ async def stream_llm_response(
     provider = model_settings["provider"]
     api_model_name = model_settings["api_model_name"]
 
+    # Just ensure the client is initialized, but don't try to use the return value directly
     await get_api_client(provider)
 
     temp = temperature if temperature is not None else settings.llm_temperature
 
+    logger.info(f"STREAM_LLM_RESPONSE: Checking provider '{provider}' for model '{api_model_name}'")
+
     if provider == "openai":
+        logger.info("STREAM_LLM_RESPONSE: Entering OpenAI block")
         client = _clients["openai"]
         tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
         stream = await client.chat.completions.create(
@@ -243,6 +246,7 @@ async def stream_llm_response(
             await asyncio.sleep(0.01)
 
     elif provider == "google":
+        logger.info("STREAM_LLM_RESPONSE: Entering Google block")
         generation_config = genai.types.GenerationConfig(
             temperature=temp,
         )
@@ -250,7 +254,8 @@ async def stream_llm_response(
             api_model_name,
             system_instruction=system_message
         )
-        response = model.generate_content(
+        # Use generate_content_async for async iteration
+        response = await model.generate_content_async(
             prompt,
             generation_config=generation_config,
             stream=True
@@ -259,3 +264,6 @@ async def stream_llm_response(
             if chunk.text:
                 yield f"data: {json.dumps({'text': chunk.text})}\n\n"
             await asyncio.sleep(0.01)
+    else:
+        logger.error(f"STREAM_LLM_RESPONSE: Unknown provider '{provider}' encountered.")
+        raise ValueError(f"Unsupported LLM provider: {provider}")

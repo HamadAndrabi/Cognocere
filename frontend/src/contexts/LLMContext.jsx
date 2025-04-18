@@ -4,12 +4,12 @@ const LLMContext = createContext();
 
 export const SUPPORTED_MODELS = {
   "gpt-4o": {
-    name: "GPT-4 Optimized",
+    name: "GPT-4o",
     provider: "openai",
     description: "Latest optimized GPT-4 model for comprehensive research"
   },
   "gpt-4o-mini": {
-    name: "GPT-4 Mini",
+    name: "GPT-4o Mini",
     provider: "openai",
     description: "Faster, more efficient version of GPT-4"
   },
