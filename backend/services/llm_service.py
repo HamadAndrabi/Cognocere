@@ -5,6 +5,7 @@ import google.generativeai as genai
 import asyncio
 import os
 import logging
+import re
 
 from config import Settings
 
@@ -159,33 +160,77 @@ async def get_structured_llm_response(
             module_name=module_name
         )
 
-        try:
-            return json.loads(response_text)
-        except json.JSONDecodeError:
-            if "```json" in response_text:
-                try:
-                    json_part = response_text.split("```json")[1].split("```")[0].strip()
-                    return json.loads(json_part)
-                except (IndexError, json.JSONDecodeError):
-                    pass
+        # Common parsing logic
+        def parse_response(response_text: str) -> Dict[str, Any]:
             try:
-                import re
-                json_match = re.search(r'\{\s*.*?\s*\}|\[\s*.*?\s*\]', response_text, re.DOTALL)
-                if json_match:
-                    return json.loads(json_match.group(0))
-                else:
-                    logger.error(f"LLM structured response parsing failed. Raw response: {response_text}")
-                    # Return a default fallback response to prevent loops in the research flow
-                    return {
-                        "is_sufficient": True,
-                        "missing_aspects": ["Error parsing LLM response as JSON"],
-                        "additional_queries": [],
-                        "confidence_score": 0.5,
-                        "queries": ["Error parsing LLM response"]
-                    }
-            except Exception as e:
-                logger.error(f"LLM structured response parsing failed. Raw response: {response_text}. Error: {e}")
-                # Return a default fallback response
+                # Log original response for debugging (truncated for log size)
+                log_response = response_text[:500] + ("..." if len(response_text) > 500 else "")
+                logger.debug(f"Raw LLM response (truncated): {log_response}")
+                
+                # Strip potential markdown fences (with more patterns)
+                cleaned_text = response_text.strip()
+                
+                # Try multiple extraction approaches in order of preference
+                
+                # 1. Extract JSON between markdown code fences with explicit json tag
+                json_code_block_patterns = [
+                    r"```(?:json|JSON)[\s\n]+(.*?)[\s\n]*```",  # ```json or ```JSON with content
+                    r"```[\s\n]+([\{\[].*?[\}\]])[\s\n]*```",   # ``` with starting { or [ character
+                    r"<json>(.*?)</json>",                      # <json> tags (some models use this)
+                ]
+                
+                for pattern in json_code_block_patterns:
+                    matches = re.search(pattern, cleaned_text, re.DOTALL)
+                    if matches:
+                        extracted_json = matches.group(1).strip()
+                        try:
+                            return json.loads(extracted_json)
+                        except json.JSONDecodeError:
+                            # Continue to next pattern if this one fails
+                            logger.debug(f"Pattern {pattern} matched but JSON decode failed, trying next pattern")
+                
+                # 2. Check if the entire text is valid JSON (without any markdown)
+                try:
+                    return json.loads(cleaned_text)
+                except json.JSONDecodeError:
+                    # Not plain JSON, continue to other approaches
+                    pass
+                
+                # 3. Simple prefix/suffix removal if they match common patterns
+                if cleaned_text.startswith("```json") or cleaned_text.startswith("```JSON"):
+                    # Skip the first line and find the closing fence
+                    lines = cleaned_text.split('\n')
+                    # Skip first line with the opening fence
+                    content_lines = []
+                    for line in lines[1:]:
+                        if line.strip() == "```":
+                            break
+                        content_lines.append(line)
+                    
+                    if content_lines:
+                        try:
+                            return json.loads('\n'.join(content_lines))
+                        except json.JSONDecodeError:
+                            # Continue to fallback approaches
+                            pass
+                
+                # 4. Last resort: find anything that looks like JSON using regex
+                json_pattern = r'(\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}|\[(?:[^\[\]]|(?:\[(?:[^\[\]]|(?:\[[^\[\]]*\]))*\]))*\])'
+                matches = re.search(json_pattern, cleaned_text, re.DOTALL)
+                if matches:
+                    try:
+                        return json.loads(matches.group(0))
+                    except json.JSONDecodeError:
+                        # Our regex might have captured invalid JSON, log and continue to fallback
+                        logger.debug("JSON extraction with regex failed to produce valid JSON")
+                
+                # If we get here, we couldn't extract valid JSON
+                raise json.JSONDecodeError("Could not extract valid JSON with any method", cleaned_text, 0)
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"LLM structured response parsing failed after trying multiple methods. Error: {str(e)}")
+                logger.debug(f"Failed to parse (first 1000 chars): {response_text[:1000]}")
+                # Fallback for parsing errors
                 return {
                     "is_sufficient": True,
                     "missing_aspects": [f"Error parsing LLM response: {str(e)}"],
@@ -193,6 +238,8 @@ async def get_structured_llm_response(
                     "confidence_score": 0.5,
                     "queries": ["Error parsing LLM response"]
                 }
+
+        return parse_response(response_text)
     except ValueError as e:
         logger.error(f"LLM response error: {str(e)}")
         # Return a default fallback response for provider-specific errors

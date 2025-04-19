@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { FaDownload, FaExternalLinkAlt, FaRedo, FaCopy, FaCheck, FaFile, FaLink, FaBookmark, FaArrowRight } from 'react-icons/fa';
 import { useResearch } from '../contexts/ResearchContext';
 
@@ -110,6 +112,98 @@ const FinalReport = ({ onNewSearch }) => {
       opacity: 1,
       transition: { duration: 0.5 }
     }
+  };
+  
+  // Define the code renderer component for reuse
+  const CodeRenderer = ({ darkMode }) => ({node, inline, className, children, ...props}) => {
+    const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    return !inline && match ? (
+      <SyntaxHighlighter
+        style={darkMode ? vscDarkPlus : vs}
+        language={language}
+        PreTag="div"
+        {...props}
+      >
+        {String(children).replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    ) : (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  };
+  
+  // Custom paragraph renderer with citation transformation
+  const ParagraphRenderer = () => ({ children }) => {
+    if (!finalReport || !finalReport.references) return <p>{children}</p>;
+    
+    // Find citations in the format [1, 2, 3] or [1]
+    const citationRegex = /\[(\d+(?:,\s*\d+)*)\]/g;
+    let parts = [];
+    let lastIndex = 0;
+    let match;
+    let content = String(children);
+    let key = 0;
+    
+    // Convert React children to string if needed
+    if (typeof content !== 'string') {
+      if (Array.isArray(children)) {
+        content = children.map(child => 
+          typeof child === 'string' ? child : 
+          (child?.props?.children ? String(child.props.children) : '')
+        ).join('');
+      } else {
+        return <p>{children}</p>; // If we can't process it, return as is
+      }
+    }
+    
+    // Process each citation match
+    while ((match = citationRegex.exec(content)) !== null) {
+      // Add text before the citation
+      if (match.index > lastIndex) {
+        parts.push(<span key={key++}>{content.substring(lastIndex, match.index)}</span>);
+      }
+      
+      // Process the citation numbers
+      const citationNumbers = match[1].split(',').map(num => parseInt(num.trim(), 10));
+      
+      // Add citation buttons
+      parts.push(
+        <span key={key++} className="inline-flex gap-1 mx-1">
+          {citationNumbers.map((num, i) => {
+            // Ensure reference exists
+            const reference = finalReport.references.find(ref => ref.index === num);
+            if (!reference) return <span key={i}>[{num}]</span>;
+            
+            return (
+              <a
+                key={i}
+                href={reference.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-6 h-6 text-xs rounded-full 
+                           bg-primary-100 text-primary-700 hover:bg-primary-200 
+                           dark:bg-primary-900/30 dark:text-primary-300 dark:hover:bg-primary-800/60
+                           transition-colors"
+                title={reference.title}
+              >
+                {num}
+              </a>
+            );
+          })}
+        </span>
+      );
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add any remaining text
+    if (lastIndex < content.length) {
+      parts.push(<span key={key++}>{content.substring(lastIndex)}</span>);
+    }
+    
+    return <p>{parts}</p>;
   };
   
   return (
@@ -222,19 +316,34 @@ const FinalReport = ({ onNewSearch }) => {
             
             <h2>Introduction</h2>
             <div className="mb-6">
-              <ReactMarkdown>{finalReport.introduction}</ReactMarkdown>
+              <ReactMarkdown components={{ 
+                code: CodeRenderer({ darkMode: true }),
+                p: ParagraphRenderer()
+              }}>
+                {finalReport.introduction}
+              </ReactMarkdown>
             </div>
             
             {finalReport.sections.map((section, index) => (
               <div key={index} className="mb-6">
                 <h2>{section.title}</h2>
-                <ReactMarkdown>{section.content}</ReactMarkdown>
+                <ReactMarkdown components={{ 
+                  code: CodeRenderer({ darkMode: true }),
+                  p: ParagraphRenderer()
+                }}>
+                  {section.content}
+                </ReactMarkdown>
               </div>
             ))}
             
             <h2>Conclusion</h2>
             <div className="mb-6">
-              <ReactMarkdown>{finalReport.conclusion}</ReactMarkdown>
+              <ReactMarkdown components={{ 
+                code: CodeRenderer({ darkMode: true }),
+                p: ParagraphRenderer()
+              }}>
+                {finalReport.conclusion}
+              </ReactMarkdown>
             </div>
           </div>
         )}
@@ -278,7 +387,12 @@ const FinalReport = ({ onNewSearch }) => {
           <div>
             <h2 className="text-2xl font-bold text-primary-700 dark:text-primary-300 mb-4 font-display">Summary</h2>
             <div className="mb-6">
-              <ReactMarkdown>{finalReport.introduction}</ReactMarkdown>
+              <ReactMarkdown components={{ 
+                code: CodeRenderer({ darkMode: true }),
+                p: ParagraphRenderer()
+              }}>
+                {finalReport.introduction}
+              </ReactMarkdown>
             </div>
             
             <h3 className="text-xl font-bold text-primary-700 dark:text-primary-300 mb-3 font-display">Key Findings</h3>
@@ -295,7 +409,12 @@ const FinalReport = ({ onNewSearch }) => {
             
             <h3 className="text-xl font-bold text-primary-700 dark:text-primary-300 mb-3 font-display">Conclusion</h3>
             <div className="mb-6">
-              <ReactMarkdown>{finalReport.conclusion}</ReactMarkdown>
+              <ReactMarkdown components={{ 
+                code: CodeRenderer({ darkMode: true }),
+                p: ParagraphRenderer()
+              }}>
+                {finalReport.conclusion}
+              </ReactMarkdown>
             </div>
           </div>
         )}
