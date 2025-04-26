@@ -92,6 +92,7 @@ async def get_llm_response(
     api_model_name = model_settings["api_model_name"]
 
     client = await get_api_client(provider)
+    client = await get_api_client(provider)
 
     temp = temperature if temperature is not None else settings.llm_temperature
 
@@ -267,13 +268,17 @@ async def stream_llm_response(
     api_model_name = model_settings["api_model_name"]
 
     # Just ensure the client is initialized, but don't try to use the return value directly
+    # Just ensure the client is initialized, but don't try to use the return value directly
     await get_api_client(provider)
 
     temp = temperature if temperature is not None else settings.llm_temperature
 
     logger.info(f"STREAM_LLM_RESPONSE: Checking provider '{provider}' for model '{api_model_name}'")
 
+    logger.info(f"STREAM_LLM_RESPONSE: Checking provider '{provider}' for model '{api_model_name}'")
+
     if provider == "openai":
+        logger.info("STREAM_LLM_RESPONSE: Entering OpenAI block")
         logger.info("STREAM_LLM_RESPONSE: Entering OpenAI block")
         client = _clients["openai"]
         tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
@@ -294,6 +299,7 @@ async def stream_llm_response(
 
     elif provider == "google":
         logger.info("STREAM_LLM_RESPONSE: Entering Google block")
+        logger.info("STREAM_LLM_RESPONSE: Entering Google block")
         generation_config = genai.types.GenerationConfig(
             temperature=temp,
         )
@@ -301,6 +307,8 @@ async def stream_llm_response(
             api_model_name,
             system_instruction=system_message
         )
+        # Use generate_content_async for async iteration
+        response = await model.generate_content_async(
         # Use generate_content_async for async iteration
         response = await model.generate_content_async(
             prompt,
