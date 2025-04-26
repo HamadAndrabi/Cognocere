@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks,Depends, Form
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
@@ -171,8 +171,12 @@ async def get_clarification_questions(session_id: str):
     return session["clarification_questions"]
 
 @app.post("/api/research/{session_id}/clarification")
-async def submit_clarification_answers(session_id: str, answers: ClarificationResponse):
-    """Submit answers to clarification questions and move to plan generation"""
+async def submit_clarification_answers(
+    session_id: str, 
+    answers: ClarificationResponse, 
+    background_tasks: BackgroundTasks
+):
+    """Submit answers to clarification questions and immediately start plan generation"""
     if session_id not in research_sessions:
         raise HTTPException(status_code=404, detail="Research session not found")
     
@@ -182,20 +186,7 @@ async def submit_clarification_answers(session_id: str, answers: ClarificationRe
     session["step"] = "plan_generation"
     research_sessions[session_id] = session
     
-    return {"status": "generating_plan"}
-
-@app.get("/api/research/{session_id}/plan")
-async def generate_plan(session_id: str, background_tasks: BackgroundTasks):
-    """Generate a search plan based on the clarified query"""
-    if session_id not in research_sessions:
-        raise HTTPException(status_code=404, detail="Research session not found")
-    
-    session = research_sessions[session_id]
-    
-    if session["status"] != "generating_plan":
-        raise HTTPException(status_code=400, detail="Cannot generate plan at this stage")
-    
-    # Start the plan generation process
+    # Start the plan generation process in the background
     background_tasks.add_task(
         process_plan_generation,
         session_id=session_id,
@@ -204,6 +195,7 @@ async def generate_plan(session_id: str, background_tasks: BackgroundTasks):
         clarification_questions=session["clarification_questions"]
     )
     
+    # Return immediately while plan generation runs in the background
     return {"status": "plan_generation_started"}
 
 async def process_plan_generation(session_id: str, query: str, clarification_answers: Dict, clarification_questions: Dict):
@@ -241,6 +233,30 @@ async def process_plan_generation(session_id: str, query: str, clarification_ans
         session["error"] = error_msg
         research_sessions[session_id] = session
         print(f"Error in plan generation: {error_msg}")
+
+@app.get("/api/research/{session_id}/plan")
+async def generate_plan(session_id: str, background_tasks: BackgroundTasks):
+    """Generate a search plan based on the clarified query (LEGACY/DEPRECATED - Plan now starts automatically)"""
+    # This endpoint is likely no longer needed if plan starts automatically after clarification
+    # Keep it for now but consider removing later
+    if session_id not in research_sessions:
+        raise HTTPException(status_code=404, detail="Research session not found")
+    
+    session = research_sessions[session_id]
+    
+    if session["status"] != "generating_plan":
+        raise HTTPException(status_code=400, detail="Cannot generate plan at this stage")
+    
+    # Start the plan generation process
+    background_tasks.add_task(
+        process_plan_generation,
+        session_id=session_id,
+        query=session["query"]["topic"],
+        clarification_answers=session["clarification_answers"],
+        clarification_questions=session["clarification_questions"]
+    )
+    
+    return {"status": "plan_generation_started"}
 
 async def process_web_search(session_id: str, search_plan: SearchPlan):
     """Process web search in the background"""

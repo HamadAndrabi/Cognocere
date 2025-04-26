@@ -34,12 +34,14 @@ const StreamingDisplay = ({ onComplete }) => {
     setFinalReport,
     setError,
     setCurrentStep,
-    resetResearch
+    resetResearch,
+    addActivity
   } = useResearch();
   
   const [status, setStatus] = useState('generating_plan');
   const [eventSource, setEventSource] = useState(null);
-  const [reportEventSource, setReportEventSource] = useState(null);
+  // Remove reportEventSource state - UnifiedResearchView will handle it
+  // const [reportEventSource, setReportEventSource] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
   const [progress, setProgress] = useState(0);
   const [hasError, setHasError] = useState(false);
@@ -50,6 +52,9 @@ const StreamingDisplay = ({ onComplete }) => {
   const [progressUpdates, setProgressUpdates] = useState([]);
   
   const contentRef = useRef(null);
+  const statusRef = useRef(status);
+  
+  useEffect(() => { statusRef.current = status; }, [status]);
   
   // Helper function to add a progress update with timestamp
   const addProgressUpdate = (type, content) => {
@@ -91,14 +96,38 @@ const StreamingDisplay = ({ onComplete }) => {
     setEventSource(source);
     
     source.onmessage = (event) => {
+      console.log('DEBUG: StreamingDisplay event handler received:', event.data);
+
+      let data;
+      let isJson = true;
       try {
-        const data = JSON.parse(event.data);
-        console.log("Received event data:", data);
+        data = JSON.parse(event.data);
+      } catch (e) {
+        isJson = false;
+        data = event.data;
+      }
+
+      if (isJson && typeof data === 'object') {
+        console.log("Received event data (JSON):", data);
         
         // Update processing status
         if (data.status) {
           setStatus(data.status);
-          setProcessingStatus(data.status);
+          // Patch: treat report streaming as generating_report for timeline
+          if (
+            data.status === 'report_generation' ||
+            data.status === 'report_generating' ||
+            data.status === 'report_in_progress' ||
+            data.status === 'streaming_report' ||
+            data.status === 'report_streaming' ||
+            (data.status === 'generating_report')
+          ) {
+            setProcessingStatus('generating_report');
+          } else if (data.status === 'curating_context' || data.status === 'context_curation') {
+            setProcessingStatus('curating_context');
+          } else {
+            setProcessingStatus(data.status);
+          }
           
           // Update current step based on status
           const statusToStep = {
@@ -130,26 +159,41 @@ const StreamingDisplay = ({ onComplete }) => {
             appendToStreamingContent(`\n\n--- ${statusMessage} ---\n\n`);
             addProgressUpdate('status', statusMessage);
           }
-          
-          // Start report streaming if status is generating_report
-          if (data.status === 'generating_report' && !reportEventSource) {
-            startReportStreaming();
-          }
         }
         
         // Handle backend details (links, processing steps, etc.)
         if (data.detail) {
+          console.log('DEBUG: Inside data.detail block', data.detail);
           const detail = data.detail;
           const detailType = data.detail_type || 'info';
           
           // Add to progress updates
           addProgressUpdate(detailType, detail);
-          
+
+          // Use the latest status for step mapping
+          let step = null;
+          const latestStatus = data.status || statusRef.current;
+          console.log('DEBUG (addActivity) detail:', detail, 'latestStatus:', latestStatus);
+          if (latestStatus === 'generating_plan') step = 'plan';
+          else if (latestStatus === 'searching_web' || latestStatus === 'searching_web_again') step = 'search';
+          else if (latestStatus === 'curating_context' || latestStatus === 'context_curation') step = 'curate';
+          else if (latestStatus === 'evaluating_context') step = 'evaluate';
+          else if (
+            latestStatus === 'generating_report' ||
+            latestStatus === 'report_generation' ||
+            latestStatus === 'report_generating' ||
+            latestStatus === 'report_in_progress' ||
+            latestStatus === 'streaming_report' ||
+            latestStatus === 'report_streaming'
+          ) step = 'report';
+          console.log('DEBUG (addActivity) resolved step:', step);
+          if (step) addActivity(step, detail);
+
           // Add to streaming content for raw output
           if (detailType === 'link') {
             appendToStreamingContent(`\nSearching: ${detail}\n`);
           } else if (detailType === 'curation') {
-            appendToStreamingContent(`\nCurating content from: ${detail}\n`);
+            appendToStreamingContent(`\nCurating content for: ${detail}\n`);
           } else {
             appendToStreamingContent(`\n${detail}\n`);
           }
@@ -178,19 +222,38 @@ const StreamingDisplay = ({ onComplete }) => {
           // Add completion message
           addProgressUpdate('report', 'Research report completed successfully');
         }
-      } catch (error) {
-        console.error('Error parsing event data:', error);
-        if (!hasError) {
-          appendToStreamingContent(`\n\n⚠️ There was an error processing the research. Please try again.\n\n`);
-          setHasError(true);
-        }
+      } else if (typeof data === 'string' && data.trim() !== '') {
+        // Handle plain text activity lines
+        console.log('DEBUG: Plain text activity received:', data);
+
+        // Use the latest status for step mapping
+        let step = null;
+        const latestStatus = statusRef.current;
+        if (latestStatus === 'generating_plan') step = 'plan';
+        else if (latestStatus === 'searching_web' || latestStatus === 'searching_web_again') step = 'search';
+        else if (latestStatus === 'curating_context' || latestStatus === 'context_curation') step = 'curate';
+        else if (latestStatus === 'evaluating_context') step = 'evaluate';
+        else if (
+          latestStatus === 'generating_report' ||
+          latestStatus === 'report_generation' ||
+          latestStatus === 'report_generating' ||
+          latestStatus === 'report_in_progress' ||
+          latestStatus === 'streaming_report' ||
+          latestStatus === 'report_streaming'
+        ) step = 'report';
+        if (step) addActivity(step, data.trim());
       }
     };
     
     source.onerror = (error) => {
-      console.error('EventSource error:', error);
-      setError('Connection to the research stream was lost. The process may still be running in the background.');
-      setHasError(true);
+      console.error('Main progress stream error:', error);
+      // Don't automatically set error state, wait for explicit error message or final status
+      // Only consider retry if it's a persistent connection error
+      // setError('Connection lost with the research server.');
+      // setStatus('error'); 
+      // setHasError(true);
+      // setLastErrorMessage('Connection lost');
+      source.close();
     };
     
     // Clean up event source on unmount
@@ -200,6 +263,8 @@ const StreamingDisplay = ({ onComplete }) => {
     };
   }, [sessionId]);
   
+  // Remove the startReportStreaming function entirely - UnifiedResearchView handles this now
+  /*
   // Function to start report streaming
   const startReportStreaming = () => {
     if (!sessionId || reportEventSource) return;
@@ -247,7 +312,10 @@ const StreamingDisplay = ({ onComplete }) => {
       console.error("Error starting report stream:", error);
     }
   };
+  */
   
+  // Remove the cleanup effect for reportEventSource
+  /*
   // Clean up report event source on unmount or status change
   useEffect(() => {
     return () => {
@@ -257,6 +325,7 @@ const StreamingDisplay = ({ onComplete }) => {
       }
     };
   }, []);
+  */
   
   // Move to report stage when finished
   useEffect(() => {

@@ -25,6 +25,7 @@ export const ResearchContextProvider = ({ children }) => {
   const [finalReport, setFinalReport] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [activityLog, setActivityLog] = useState([]);
 
   // Reset the research state
   const resetResearch = () => {
@@ -37,6 +38,7 @@ export const ResearchContextProvider = ({ children }) => {
     setStreamingContent('');
     setFinalReport(null);
     setError(null);
+    setActivityLog([]);
   };
 
   // Update clarification answer
@@ -50,6 +52,11 @@ export const ResearchContextProvider = ({ children }) => {
   // Add to streaming content
   const appendToStreamingContent = (text) => {
     setStreamingContent(prev => prev + text);
+  };
+
+  // Add activity to activity log
+  const addActivity = (step, detail) => {
+    setActivityLog(prev => [...prev, { step, detail, timestamp: new Date().toISOString() }]);
   };
 
   // Value object to be provided by the context
@@ -69,6 +76,8 @@ export const ResearchContextProvider = ({ children }) => {
     streamingContent,
     setStreamingContent,
     appendToStreamingContent,
+    activityLog,
+    addActivity,
     finalReport,
     setFinalReport,
     error,
