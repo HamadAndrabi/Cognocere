@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaMoon, FaSun, FaSignInAlt, FaUserCircle, FaSignOutAlt, FaHistory, FaCog } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
-import { GiIronHulledWarship } from 'react-icons/gi';
 
 const Header = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -170,9 +169,6 @@ const Header = () => {
       <div className="container mx-auto flex justify-between items-center py-4 px-6">
         <Link to="/" className="flex items-center space-x-3">
           <div className="flex items-center space-x-3">
-            <div className="text-primary-500 dark:text-primary-300 text-3xl bg-primary-50 dark:bg-primary-800 p-2 rounded-lg">
-              <GiIronHulledWarship />
-            </div>
             <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-primary-300 dark:from-primary-300 dark:to-primary-100 m-0">
               Cognocere
             </h1>

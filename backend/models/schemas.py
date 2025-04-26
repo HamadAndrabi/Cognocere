@@ -66,3 +66,6 @@ class FinalReport(BaseModel):
     conclusion: str
     references: List[Dict[str, Any]]
     metadata: Dict[str, Any] = Field(..., description="Metadata about the report generation")
+    markdown_content: Optional[str] = None
+
+# === User Models ===

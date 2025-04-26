@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FaSearch, FaSpinner, FaPaperPlane, FaChevronDown } from 'react-icons/fa';
 import { GiIronHulledWarship } from 'react-icons/gi';
 import { SiOpenai, SiGoogle } from 'react-icons/si';
+import { useNavigate } from 'react-router-dom';
 import { useResearch } from '../contexts/ResearchContext';
 import { useLLM } from '../contexts/LLMContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,7 +38,7 @@ const customScrollbarStyle = `
 }
 `;
 
-const InputForm = ({ onSubmit }) => {
+const InputForm = () => {
   const { 
     setResearchTopic, 
     setSessionId, 
@@ -56,6 +57,7 @@ const InputForm = ({ onSubmit }) => {
   const fullGreeting = useRef(''); // Use ref to store the full greeting without causing re-renders on change
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const modelDropdownRef = useRef(null);
+  const navigate = useNavigate();
 
   // Add effect to prevent body scrolling
   useEffect(() => {
@@ -146,19 +148,22 @@ const InputForm = ({ onSubmit }) => {
     setInputError('');
     setIsSubmitting(true);
     setLoading(true);
-    
+    setError(null);
+
     try {
-      const sessionData = await apiService.startResearch(topic, selectedModel);
-      setSessionId(sessionData.session_id);
+      console.log(`Starting research with topic: "${topic}" and model: ${selectedModel}`);
+      const session = await apiService.startResearch(topic, selectedModel); 
+      console.log('Research started, session:', session);
+      
       setResearchTopic(topic);
+      setSessionId(session.session_id); // Assuming API returns { session_id: '...' }
+      setClarificationQuestions(null); // Reset any previous questions
+
+      // Navigate to clarification page
+      navigate(`/research/${session.session_id}/clarification`);
       
-      const questionsData = await apiService.getClarificationQuestions(sessionData.session_id);
-      setClarificationQuestions(questionsData.questions || []);
-      
-      if (onSubmit) onSubmit();
-      
-    } catch (error) {
-      console.error('Error starting research:', error);
+    } catch (err) {
+      console.error('Error starting research:', err);
       setError('Failed to start research. Please try again.');
       setInputError('An error occurred. Please try again.');
     } finally {

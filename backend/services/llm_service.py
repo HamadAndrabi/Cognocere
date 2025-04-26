@@ -307,10 +307,22 @@ async def stream_llm_response(
             generation_config=generation_config,
             stream=True
         )
-        async for chunk in response:
-            if chunk.text:
-                yield f"data: {json.dumps({'text': chunk.text})}\n\n"
-            await asyncio.sleep(0.01)
+        try:
+            # Use async for to iterate over the asynchronous stream response
+            async for chunk in response:
+                if hasattr(chunk, 'text') and chunk.text: 
+                    # Yield the text chunk directly, wrapped in the expected JSON structure
+                    yield json.dumps({"report_chunk": chunk.text}) + '\n\n'
+                elif hasattr(chunk, 'parts'): # Handle potential parts structure
+                    for part in chunk.parts:
+                        if hasattr(part, 'text') and part.text:
+                            yield json.dumps({"report_chunk": part.text}) + '\n\n'
+        except Exception as e:
+            logger.error(f"Error processing Google stream chunk: {e}")
+            yield json.dumps({"error": "Failed to process stream chunk from Google"}) + '\n\n'
+            # Stop streaming on error within the Google block
+            return
+            
     else:
         logger.error(f"STREAM_LLM_RESPONSE: Unknown provider '{provider}' encountered.")
         raise ValueError(f"Unsupported LLM provider: {provider}")
