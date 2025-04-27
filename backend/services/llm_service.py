@@ -268,17 +268,13 @@ async def stream_llm_response(
     api_model_name = model_settings["api_model_name"]
 
     # Just ensure the client is initialized, but don't try to use the return value directly
-    # Just ensure the client is initialized, but don't try to use the return value directly
     await get_api_client(provider)
 
     temp = temperature if temperature is not None else settings.llm_temperature
 
     logger.info(f"STREAM_LLM_RESPONSE: Checking provider '{provider}' for model '{api_model_name}'")
 
-    logger.info(f"STREAM_LLM_RESPONSE: Checking provider '{provider}' for model '{api_model_name}'")
-
     if provider == "openai":
-        logger.info("STREAM_LLM_RESPONSE: Entering OpenAI block")
         logger.info("STREAM_LLM_RESPONSE: Entering OpenAI block")
         client = _clients["openai"]
         tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
@@ -299,7 +295,6 @@ async def stream_llm_response(
 
     elif provider == "google":
         logger.info("STREAM_LLM_RESPONSE: Entering Google block")
-        logger.info("STREAM_LLM_RESPONSE: Entering Google block")
         generation_config = genai.types.GenerationConfig(
             temperature=temp,
         )
@@ -307,19 +302,14 @@ async def stream_llm_response(
             api_model_name,
             system_instruction=system_message
         )
-        # Use generate_content_async for async iteration
-        response = await model.generate_content_async(
-        # Use generate_content_async for async iteration
         response = await model.generate_content_async(
             prompt,
             generation_config=generation_config,
             stream=True
         )
         try:
-            # Use async for to iterate over the asynchronous stream response
             async for chunk in response:
                 if hasattr(chunk, 'text') and chunk.text: 
-                    # Yield the text chunk directly, wrapped in the expected JSON structure
                     yield json.dumps({"report_chunk": chunk.text}) + '\n\n'
                 elif hasattr(chunk, 'parts'): # Handle potential parts structure
                     for part in chunk.parts:
@@ -328,7 +318,6 @@ async def stream_llm_response(
         except Exception as e:
             logger.error(f"Error processing Google stream chunk: {e}")
             yield json.dumps({"error": "Failed to process stream chunk from Google"}) + '\n\n'
-            # Stop streaming on error within the Google block
             return
             
     else:
