@@ -16,8 +16,7 @@ async def generate_search_plan(
     topic: str, 
     clarification_answers: Dict[str, str], 
     clarification_questions=None,
-    model_id: Optional[str] = None
-) -> SearchPlan:
+    model_id: Optional[str] = None) -> SearchPlan:
     """
     Generate a search plan based on the research topic and clarification answers.
     
@@ -31,11 +30,15 @@ async def generate_search_plan(
         A SearchPlan object with specific search queries
     """
     # First, do a light search to gather initial context
-    initial_results = await search_web(topic, num_results=3)
+    try:
+        initial_results = await search_web(topic, num_results=3)
+        snippets = [result.get("snippet", "") for result in initial_results]
+        initial_context = "\n\n".join(snippets)
+    except Exception as e:
+        print(f"Warning: initial search failed: {e}")
+        initial_context = ""
     
     # Extract snippets from initial results
-    snippets = [result.get("snippet", "") for result in initial_results]
-    initial_context = "\n\n".join(snippets)
     
     # Format clarification answers for the prompt
     formatted_answers = []
